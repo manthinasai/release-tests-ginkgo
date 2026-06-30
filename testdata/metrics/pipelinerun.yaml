@@ -1,0 +1,13 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: otel-metrics-test
+spec:
+  pipelineSpec:
+    tasks:
+    - name: hello
+      taskSpec:
+        steps:
+        - name: say-hello
+          image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+          script: echo "metrics test"

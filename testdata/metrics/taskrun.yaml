@@ -1,0 +1,10 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: otel-metrics-taskrun-test
+spec:
+  taskSpec:
+    steps:
+    - name: say-hello
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      script: echo "standalone taskrun metrics test"

@@ -106,41 +106,67 @@ func VerifyHealthStatusMetric(cs *clients.Clients, targetService TargetService) 
 	return nil
 }
 
-// VerifyPipelinesControlPlaneMetrics verifies that the control plane metrics for Tekton Pipelines are present.
+// VerifyPipelinesControlPlaneMetrics verifies that the pipelines controller is emitting metrics.
+// Only checks metrics that are always present from controller startup, without requiring
+// any PipelineRun or TaskRun activity. Activity-dependent metrics (counters, histograms)
+// are tested separately in the OTel migration test suite.
 func VerifyPipelinesControlPlaneMetrics(cs *clients.Clients) error {
+	pipelineMetrics := []string{
+		"tekton_pipelines_controller_running_pipelineruns",
+		"tekton_pipelines_controller_running_taskruns",
+		"tekton_pipelines_controller_running_pipelineruns_waiting_on_pipeline_resolution",
+		"tekton_pipelines_controller_running_pipelineruns_waiting_on_task_resolution",
+	}
+	for _, metric := range pipelineMetrics {
+		if err := VerifyMetricExists(cs, metric); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// VerifyMetricExists verifies that a metric is present in Prometheus.
+func VerifyMetricExists(cs *clients.Clients, metricName string) error {
 	pc, err := newPrometheusClient(cs)
 	if err != nil {
 		return err
 	}
-
-	pipelineMetrics := []string{
-		"tekton_go_alloc",
-		"tekton_go_mallocs",
-		"tekton_pipelinerun_duration_seconds_sum",
-		"tekton_pipelinerun_duration_seconds_count",
-		"tekton_pipelinerun_taskrun_duration_seconds_bucket",
-		"tekton_pipelinerun_taskrun_duration_seconds_sum",
-		"tekton_pipelinerun_taskrun_duration_seconds_count",
-		"tekton_pipelinerun_count",
-		"tekton_running_pipelineruns_count",
-		"tekton_taskrun_duration_seconds_bucket",
-		"tekton_taskrun_duration_seconds_sum",
-		"tekton_taskrun_duration_seconds_count",
-		"tekton_taskrun_count",
-		"tekton_running_taskruns_count",
-		"tekton_taskruns_pod_latency",
-	}
-	for _, metric := range pipelineMetrics {
-		if err := wait.PollUntilContextTimeout(cs.Ctx, config.APIRetry, config.APITimeout, true, func(context.Context) (bool, error) {
-			value, _, err := pc.Query(context.Background(), metric, time.Time{})
-			if err != nil {
-				return false, err
-			}
-
-			return value.Type() == prommodel.ValVector, nil
-		}); err != nil {
-			return fmt.Errorf("failed to access the Prometheus API endpoint for %s and get the metric value expected: %w", metric, err)
+	if err := wait.PollUntilContextTimeout(cs.Ctx, config.APIRetry, config.APITimeout, true, func(context.Context) (bool, error) {
+		value, _, err := pc.Query(context.Background(), metricName, time.Time{})
+		if err != nil {
+			return false, err
 		}
+		vec, ok := value.(prommodel.Vector)
+		if !ok || len(vec) == 0 {
+			return false, nil
+		}
+		return true, nil
+	}); err != nil {
+		return fmt.Errorf("metric %q not found in Prometheus: %w", metricName, err)
+	}
+	return nil
+}
+
+// VerifyMetricAbsent verifies that a metric does NOT exist in Prometheus.
+// Uses retry logic to handle cases where stale metric data might persist briefly
+// until the next Prometheus scrape interval confirms the metric is no longer emitted.
+func VerifyMetricAbsent(cs *clients.Clients, metricName string) error {
+	pc, err := newPrometheusClient(cs)
+	if err != nil {
+		return fmt.Errorf("failed to create Prometheus client while checking absence of %q: %w", metricName, err)
+	}
+	if err := wait.PollUntilContextTimeout(cs.Ctx, config.APIRetry, config.APITimeout, true, func(context.Context) (bool, error) {
+		value, _, err := pc.Query(context.Background(), metricName, time.Time{})
+		if err != nil {
+			return false, err
+		}
+		vec, ok := value.(prommodel.Vector)
+		if !ok || len(vec) == 0 {
+			return true, nil // Metric is absent - success
+		}
+		return false, nil // Metric still present - keep retrying
+	}); err != nil {
+		return fmt.Errorf("metric %q should not exist but is still present after timeout: %w", metricName, err)
 	}
 	return nil
 }
