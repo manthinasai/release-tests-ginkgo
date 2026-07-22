@@ -10,7 +10,8 @@ import (
 
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/clients"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/config"
-	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/diagnostics"
+	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/hooks"
+	occmd "github.com/openshift-pipelines/release-tests-ginkgo/pkg/oc"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/store"
 )
 
@@ -20,7 +21,11 @@ var sharedClients *clients.Clients
 // Set in BeforeEach by test specs; read in ReportAfterEach by diagnostics collector.
 var lastNamespace string
 
+// oc is the package-level OpenShift CLI helper used by all operator test files.
+var oc = occmd.OC{}
+
 func TestOperator(t *testing.T) {
+	config.MustLoadEnvironment()
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Operator Suite", Label("operator"))
 }
@@ -69,8 +74,9 @@ var _ = SynchronizedBeforeSuite(
 )
 
 var _ = AfterSuite(func() {
+	hooks.CleanupNamespaces()
 	_ = config.RemoveTempDir()
 })
 
-// Collect diagnostics (pod logs, events, resource state) on test failure.
-var _ = ReportAfterEach(diagnostics.CollectOnFailure(&lastNamespace))
+// Automatically create namespace per Describe block
+var _ = hooks.AutoNamespacePerDescribe(&lastNamespace, func() *clients.Clients { return sharedClients })

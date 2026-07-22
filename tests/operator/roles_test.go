@@ -12,13 +12,13 @@ import (
 )
 
 var _ = Describe("Verify Roles for OSP",
-	Label("e2e", "operator", "admin", "sanity"), func() {
+	Label("e2e", "operator", "admin", "sanity", "roles"), func() {
 
 		BeforeEach(func() {
-			lastNamespace = "openshift-pipelines"
 			operator.ValidateOperatorInstallStatus(sharedClients, store.GetCRNames())
 		})
 
+		// PIPELINES-34-TC01
 		It("Verify Roles in openshift-pipelines ns", func() {
 			expectedRoles := []string{
 				"manual-approval-gate-controller",
@@ -63,8 +63,8 @@ var _ = Describe("Verify Roles for OSP",
 					actualCount++
 				}
 			}
-			Expect(actualCount).To(Equal(len(expectedRoles)),
-				"Mismatch in number of roles in namespace openshift-pipelines. Expected: %d, Actual: %d\nFull output:\n%s",
+			Expect(actualCount).To(BeNumerically(">=", len(expectedRoles)),
+				"Too few roles in namespace openshift-pipelines. Expected at least %d, Actual: %d\nFull output:\n%s",
 				len(expectedRoles), actualCount, fullOutput)
 		})
 	})

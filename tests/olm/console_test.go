@@ -1,4 +1,4 @@
-package operator_test
+package olm_test
 
 import (
 	. "github.com/onsi/ginkgo/v2" //nolint:revive,staticcheck // dot import is idiomatic for Ginkgo

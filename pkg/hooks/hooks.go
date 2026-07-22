@@ -108,6 +108,25 @@ func AutoNamespacePerDescribe(namespacePtr *string, clientsFunc func() *clients.
 			}
 		}
 
+		// If the container opts out of auto-namespace management (Label("no-auto-namespace")),
+		// skip creation — the test manages its own static namespaces.
+		optOut := false
+		for _, clabels := range spec.ContainerHierarchyLabels {
+			for _, l := range clabels {
+				if l == "no-auto-namespace" {
+					optOut = true
+					break
+				}
+			}
+			if optOut {
+				break
+			}
+		}
+		if optOut {
+			manager.lastContainerPath = containerPath
+			return
+		}
+
 		// Check if we're in a new container that doesn't have a namespace yet
 		// For retries, containerPath includes attempt number, so this will be true
 		if _, exists := manager.containerToNS[containerPath]; !exists {

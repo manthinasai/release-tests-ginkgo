@@ -35,7 +35,7 @@ var tlsEnvDeployments = []string{
 }
 
 var _ = Describe("SRVKP-11926: Central TLS profile propagation to Pipelines components",
-	Serial, Ordered, Label("e2e", "operator", "admin", "tls-profile"), func() {
+	Serial, Ordered, ContinueOnFailure, Label("e2e", "operator", "admin", "tls-profile"), func() {
 
 		var originalProfile string
 

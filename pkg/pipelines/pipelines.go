@@ -1,11 +1,9 @@
 package pipelines
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	w "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/clients"
@@ -243,23 +240,76 @@ func AssertForNoNewPipelineRunCreation(c *clients.Clients, namespace string) {
 		fmt.Sprintf("Expected no new PipelineRuns in namespace %s, but %d were created", namespace, count))
 }
 
-// AssertNumberOfPipelineruns waits until the expected number of PipelineRuns exist in the namespace
-// within the given timeout (in seconds).
-func AssertNumberOfPipelineruns(c *clients.Clients, _, numberOfPr, timeoutSeconds string) {
-	log.Printf("Verifying if %s pipelineruns are present", numberOfPr)
-	timeoutSecondsInt, _ := strconv.Atoi(timeoutSeconds)
-	err := w.PollUntilContextTimeout(c.Ctx, config.APIRetry, time.Second*time.Duration(timeoutSecondsInt), false, func(context.Context) (bool, error) {
-		prlist, err := c.PipelineRunClient.List(c.Ctx, metav1.ListOptions{})
-		numberOfPrInt, _ := strconv.Atoi(numberOfPr)
-		if len(prlist.Items) == numberOfPrInt {
-			return true, nil
+// AssertNumberOfPipelineruns polls until exactly expectedCount PipelineRuns are present in namespace.
+func AssertNumberOfPipelineruns(namespace string, expectedCount, timeoutSeconds int) {
+	log.Printf("Verifying if %d pipelinerun(s) are present in %s", expectedCount, namespace)
+	Eventually(func(g Gomega) {
+		output := cmd.Run("oc", "get", "pipelinerun", "-n", namespace, "-o", "name").Stdout()
+		lines := strings.Split(strings.TrimSpace(output), "\n")
+		count := 0
+		for _, line := range lines {
+			if strings.TrimSpace(line) != "" {
+				count++
+			}
 		}
-		return false, err
-	})
-	if err != nil {
-		prlist, _ := c.PipelineRunClient.List(c.Ctx, metav1.ListOptions{})
-		Fail(fmt.Sprintf("error: Expected %v pipelineruns but found %v pipelineruns: %s", numberOfPr, len(prlist.Items), err))
-	}
+		g.Expect(count).To(Equal(expectedCount),
+			"expected %d pipelinerun(s) in namespace %s, got %d", expectedCount, namespace, count)
+	}).WithTimeout(time.Duration(timeoutSeconds) * time.Second).WithPolling(config.APIRetry).Should(Succeed())
+}
+
+// AssertNumberOfPipelinerunsWithStatus polls until exactly expectedCount PipelineRuns in
+// namespace have the given completion status reason ("Succeeded" or "Failed").
+func AssertNumberOfPipelinerunsWithStatus(namespace, status string, expectedCount, timeoutSeconds int) {
+	log.Printf("Verifying if %d pipelineruns with status %s are present in %s", expectedCount, status, namespace)
+	Eventually(func(g Gomega) {
+		output := cmd.Run("oc", "get", "pipelinerun", "-n", namespace,
+			"-o", `jsonpath={range .items[*]}{.status.conditions[0].reason}{"\n"}{end}`).Stdout()
+		count := 0
+		for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+			if strings.TrimSpace(line) == status {
+				count++
+			}
+		}
+		g.Expect(count).To(Equal(expectedCount),
+			"expected %d pipelinerun(s) with status %s in namespace %s, got %d",
+			expectedCount, status, namespace, count)
+	}).WithTimeout(time.Duration(timeoutSeconds) * time.Second).WithPolling(config.APIRetry).Should(Succeed())
+}
+
+// AssertNumberOfTaskruns polls until exactly expectedCount TaskRuns are present in namespace.
+func AssertNumberOfTaskruns(namespace string, expectedCount, timeoutSeconds int) {
+	log.Printf("Verifying if %d taskrun(s) are present in %s", expectedCount, namespace)
+	Eventually(func(g Gomega) {
+		output := cmd.Run("oc", "get", "taskrun", "-n", namespace, "-o", "name").Stdout()
+		lines := strings.Split(strings.TrimSpace(output), "\n")
+		count := 0
+		for _, line := range lines {
+			if strings.TrimSpace(line) != "" {
+				count++
+			}
+		}
+		g.Expect(count).To(Equal(expectedCount),
+			"expected %d taskrun(s) in namespace %s, got %d", expectedCount, namespace, count)
+	}).WithTimeout(time.Duration(timeoutSeconds) * time.Second).WithPolling(config.APIRetry).Should(Succeed())
+}
+
+// AssertNumberOfTaskrunsWithStatus polls until exactly expectedCount TaskRuns in namespace
+// have the given completion status reason ("Succeeded" or "Failed").
+func AssertNumberOfTaskrunsWithStatus(namespace, status string, expectedCount, timeoutSeconds int) {
+	log.Printf("Verifying if %d taskrun(s) with status %s are present in %s", expectedCount, status, namespace)
+	Eventually(func(g Gomega) {
+		output := cmd.Run("oc", "get", "taskrun", "-n", namespace,
+			"-o", `jsonpath={range .items[*]}{.status.conditions[0].reason}{"\n"}{end}`).Stdout()
+		count := 0
+		for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+			if strings.TrimSpace(line) == status {
+				count++
+			}
+		}
+		g.Expect(count).To(Equal(expectedCount),
+			"expected %d taskrun(s) with status %s in namespace %s, got %d",
+			expectedCount, status, namespace, count)
+	}).WithTimeout(time.Duration(timeoutSeconds) * time.Second).WithPolling(config.APIRetry).Should(Succeed())
 }
 
 // GetLatestPipelinerun returns the name of the most recently created PipelineRun in the namespace.

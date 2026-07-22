@@ -65,7 +65,7 @@ var _ = Describe("Tutorial", Label("triggers"), func() {
 		// First push event: vote-api
 		resp1, _ := triggers.MockPostEvent(routeURL, "github", "push", "testdata/push-vote-api.json", false)
 		triggers.AssertElResponse(sharedClients, resp1, "vote-app", ns)
-		pipelines.AssertNumberOfPipelineruns(sharedClients, ns, "1", "15")
+		pipelines.AssertNumberOfPipelineruns(ns, 1, 15)
 		prname1, err := pipelines.GetLatestPipelinerun(sharedClients, ns)
 		Expect(err).NotTo(HaveOccurred())
 		pipelines.ValidatePipelineRun(sharedClients, prname1, "successful", ns)
@@ -73,7 +73,7 @@ var _ = Describe("Tutorial", Label("triggers"), func() {
 		// Second push event: vote-ui
 		resp2, _ := triggers.MockPostEvent(routeURL, "github", "push", "testdata/push-vote-ui.json", false)
 		triggers.AssertElResponse(sharedClients, resp2, "vote-app", ns)
-		pipelines.AssertNumberOfPipelineruns(sharedClients, ns, "2", "15")
+		pipelines.AssertNumberOfPipelineruns(ns, 2, 15)
 		prname2, err := pipelines.GetLatestPipelinerun(sharedClients, ns)
 		Expect(err).NotTo(HaveOccurred())
 		pipelines.ValidatePipelineRun(sharedClients, prname2, "successful", ns)

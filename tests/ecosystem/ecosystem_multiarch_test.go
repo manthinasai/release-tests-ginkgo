@@ -10,7 +10,7 @@ import (
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/pipelines"
 )
 
-// ========================================================================
+// PIPELINES-32
 // ========================================================================
 //
 // These tests verify ecosystem tasks on different CPU architectures.
@@ -18,15 +18,15 @@ import (
 // architecture doesn't match the required architecture.
 //
 // Test Cases:
-//   TC01: jib-maven pipelinerun (amd64)
-//   TC02: jib-maven P&Z pipelinerun (ppc64le, s390x, arm64)
-//   TC03: kn-apply pipelinerun (amd64)
-//   TC04: kn-apply p&z pipelinerun (ppc64le, s390x)
-//   TC05: kn pipelinerun (amd64)
-//   TC06: kn p&z pipelinerun (ppc64le, s390x)
+//   PIPELINES-32-TC01: jib-maven pipelinerun (amd64)
+//   PIPELINES-32-TC02: jib-maven P&Z pipelinerun (ppc64le, s390x, arm64)
+//   PIPELINES-32-TC03: kn-apply pipelinerun (amd64)
+//   PIPELINES-32-TC04: kn-apply p&z pipelinerun (ppc64le, s390x)
+//   PIPELINES-32-TC05: kn pipelinerun (amd64)
+//   PIPELINES-32-TC06: kn p&z pipelinerun (ppc64le, s390x)
 // ========================================================================
 
-// TC01: jib-maven pipelinerun (amd64)
+// PIPELINES-32-TC01
 var _ = Describe("jib-maven pipelinerun", Label("ecosystem", "e2e", "sanity", "jib-maven"), func() {
 	It("should create jib-maven pipelinerun with registry credentials", func() {
 		if len([]string{"amd64"}) > 0 {
@@ -57,7 +57,7 @@ var _ = Describe("jib-maven pipelinerun", Label("ecosystem", "e2e", "sanity", "j
 	})
 })
 
-// TC02: jib-maven P&Z pipelinerun (ppc64le, s390x, arm64)
+// PIPELINES-32-TC02
 var _ = Describe("jib-maven P&Z pipelinerun", Label("ecosystem", "e2e", "sanity", "jib-maven"), func() {
 	It("should create jib-maven pipelinerun with registry credentials", func() {
 		if len([]string{"ppc64le", "s390x", "arm64"}) > 0 {
@@ -86,7 +86,7 @@ var _ = Describe("jib-maven P&Z pipelinerun", Label("ecosystem", "e2e", "sanity"
 	})
 })
 
-// TC03: kn-apply pipelinerun (amd64)
+// PIPELINES-32-TC03
 var _ = Describe("kn-apply pipelinerun", Label("ecosystem", "e2e", "kn-apply"), func() {
 	It("should create and verify kn-apply pipelinerun", func() {
 		if len([]string{"amd64"}) > 0 {
@@ -119,7 +119,7 @@ var _ = Describe("kn-apply pipelinerun", Label("ecosystem", "e2e", "kn-apply"), 
 	})
 })
 
-// TC04: kn-apply p&z pipelinerun (ppc64le, s390x)
+// PIPELINES-32-TC04
 var _ = Describe("kn-apply p&z pipelinerun", Label("ecosystem", "e2e", "kn-apply"), func() {
 	It("should create and verify kn-apply pipelinerun", func() {
 		if len([]string{"ppc64le", "s390x"}) > 0 {
@@ -151,7 +151,7 @@ var _ = Describe("kn-apply p&z pipelinerun", Label("ecosystem", "e2e", "kn-apply
 	})
 })
 
-// TC05: kn pipelinerun (amd64)
+// PIPELINES-32-TC05
 var _ = Describe("kn pipelinerun", Label("ecosystem", "e2e", "kn"), func() {
 	It("should create and verify kn pipelinerun", func() {
 		if len([]string{"amd64"}) > 0 {
@@ -183,7 +183,7 @@ var _ = Describe("kn pipelinerun", Label("ecosystem", "e2e", "kn"), func() {
 	})
 })
 
-// TC06: kn p&z pipelinerun (ppc64le, s390x)
+// PIPELINES-32-TC06
 var _ = Describe("kn p&z pipelinerun", Label("ecosystem", "e2e", "kn"), func() {
 	It("should create and verify kn pipelinerun", func() {
 		if len([]string{"ppc64le", "s390x"}) > 0 {

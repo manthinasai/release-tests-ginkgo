@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -170,7 +171,7 @@ func (oc *OC) UpdateTektonConfig(patchData string) {
 
 // UpdateTektonConfigwithInvalidData patches TektonConfig with invalid data and asserts the expected error message.
 func (oc *OC) UpdateTektonConfigwithInvalidData(patchData, errorMessage string) {
-	result := oc.run("patch", "tektonconfig", "config", "-p", patchData, "--type=merge")
+	result := oc.runIgnoreErrors("patch", "tektonconfig", "config", "-p", patchData, "--type=merge")
 	log.Printf("Output: %s\n", result.Stdout())
 	Expect(result.ExitCode).To(Equal(1),
 		"Expected exit code 1 but got %d", result.ExitCode)
@@ -192,6 +193,120 @@ func (oc *OC) AnnotateNamespaceIgnoreErrors(namespace, annotation string) {
 // RemovePrunerConfig removes the pruner spec from TektonConfig.
 func (oc *OC) RemovePrunerConfig() {
 	oc.run("patch", "tektonconfig", "config", "-p", "[{ \"op\": \"remove\", \"path\": \"/spec/pruner\" }]", "--type=json")
+}
+
+// UpdateAddonConfig patches spec.addon.params for resolverTasks and pipelineTemplates.
+// If expectedMessage is non-empty the patch is expected to be rejected with that error.
+func (oc *OC) UpdateAddonConfig(resolverTasks, pipelineTemplates, expectedMessage string) {
+	patchData := fmt.Sprintf(
+		`{"spec":{"addon":{"params":[{"name":"resolverTasks","value":"%s"},{"name":"pipelineTemplates","value":"%s"}]}}}`,
+		resolverTasks, pipelineTemplates,
+	)
+	if expectedMessage == "" {
+		oc.UpdateTektonConfig(patchData)
+	} else {
+		oc.UpdateTektonConfigwithInvalidData(patchData, expectedMessage)
+	}
+}
+
+// UpdateTektonConfigParam patches a single spec.params entry by name.
+func (oc *OC) UpdateTektonConfigParam(paramName, value string) {
+	patchData := fmt.Sprintf(`{"spec":{"params":[{"name":"%s","value":"%s"}]}}`, paramName, value)
+	log.Printf("Patching TektonConfig param %s=%s\n", paramName, value)
+	oc.UpdateTektonConfig(patchData)
+}
+
+// UpdatePrunerConfig patches spec.pruner with the given schedule, resources, and optional keep/keep-since.
+func (oc *OC) UpdatePrunerConfig(keep, schedule, resources, keepSince string, withKeep, withKeepSince bool) {
+	patch := buildPrunerPatch(keep, schedule, resources, keepSince, withKeep, withKeepSince)
+	log.Printf("Patching TektonConfig pruner: %s\n", patch)
+	oc.UpdateTektonConfig(patch)
+}
+
+// UpdatePrunerConfigExpectError patches spec.pruner with invalid data and returns the stderr output.
+func (oc *OC) UpdatePrunerConfigExpectError(keep, schedule, resources, keepSince string, withKeep, withKeepSince bool) string {
+	patch := buildPrunerPatch(keep, schedule, resources, keepSince, withKeep, withKeepSince)
+	log.Printf("Patching TektonConfig pruner with invalid data: %s\n", patch)
+	result := oc.runIgnoreErrors("patch", "tektonconfig", "config", "-p", patch, "--type=merge")
+	return result.Stderr()
+}
+
+// buildPrunerPatch constructs the JSON patch string for spec.pruner.
+func buildPrunerPatch(keep, schedule, resources, keepSince string, withKeep, withKeepSince bool) string {
+	fields := []string{fmt.Sprintf(`"schedule":"%s"`, schedule)}
+	resList := strings.Split(resources, ",")
+	resJSON := make([]string, len(resList))
+	for i, r := range resList {
+		resJSON[i] = fmt.Sprintf(`"%s"`, strings.TrimSpace(r))
+	}
+	fields = append(fields, fmt.Sprintf(`"resources":[%s]`, strings.Join(resJSON, ",")))
+	if withKeep {
+		fields = append(fields, fmt.Sprintf(`"keep":%s`, keep))
+	} else {
+		fields = append(fields, `"keep":null`)
+	}
+	if withKeepSince {
+		fields = append(fields, fmt.Sprintf(`"keep-since":%s`, keepSince))
+	} else {
+		fields = append(fields, `"keep-since":null`)
+	}
+	return fmt.Sprintf(`{"spec":{"pruner":{%s}}}`, strings.Join(fields, ","))
+}
+
+// EnableLegacyPruner sets spec.pruner.disabled=false in TektonConfig.
+func (oc *OC) EnableLegacyPruner() {
+	oc.UpdateTektonConfig(`{"spec":{"pruner":{"disabled":false}}}`)
+}
+
+// DisableLegacyPruner sets spec.pruner.disabled=true in TektonConfig.
+func (oc *OC) DisableLegacyPruner() {
+	oc.UpdateTektonConfig(`{"spec":{"pruner":{"disabled":true}}}`)
+}
+
+// EnableTektonPruner sets spec.tektonpruner.disabled=false in TektonConfig.
+func (oc *OC) EnableTektonPruner() {
+	oc.UpdateTektonConfig(`{"spec":{"tektonpruner":{"disabled":false}}}`)
+}
+
+// DisableTektonPruner sets spec.tektonpruner.disabled=true in TektonConfig.
+func (oc *OC) DisableTektonPruner() {
+	oc.UpdateTektonConfig(`{"spec":{"tektonpruner":{"disabled":true}}}`)
+}
+
+// SetTektonPrunerGlobalConfig patches spec.tektonpruner.global-config.{param} = value.
+// Dot-notation params (e.g. "namespaces.dev.ttlSecondsAfterFinished") are expanded to
+// nested JSON. If expectedMessage is non-empty the patch is expected to be rejected
+// with that error substring; otherwise the patch must succeed.
+func (oc *OC) SetTektonPrunerGlobalConfig(param, value, expectedMessage string) {
+	value = strings.TrimSpace(value)
+	var valuePart string
+	if value == "" || strings.EqualFold(value, "null") {
+		valuePart = "null"
+	} else if _, err := strconv.Atoi(value); err == nil {
+		valuePart = value
+	} else {
+		valuePart = fmt.Sprintf("\"%s\"", strings.ReplaceAll(value, "\"", "\\\""))
+	}
+
+	var globalConfigJSON string
+	if strings.Contains(param, ".") {
+		parts := strings.Split(param, ".")
+		inner := fmt.Sprintf("\"%s\":%s", parts[len(parts)-1], valuePart)
+		for i := len(parts) - 2; i >= 0; i-- {
+			inner = fmt.Sprintf("\"%s\":{%s}", parts[i], inner)
+		}
+		globalConfigJSON = inner
+	} else {
+		globalConfigJSON = fmt.Sprintf("\"%s\":%s", param, valuePart)
+	}
+	patchData := fmt.Sprintf("{\"spec\":{\"tektonpruner\":{\"global-config\":{%s}}}}", globalConfigJSON)
+	log.Printf("Patching TektonConfig tektonpruner global-config: %s\n", patchData)
+
+	if expectedMessage == "" {
+		oc.UpdateTektonConfig(patchData)
+	} else {
+		oc.UpdateTektonConfigwithInvalidData(patchData, expectedMessage)
+	}
 }
 
 // LabelNamespace adds a label to the given namespace.

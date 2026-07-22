@@ -30,6 +30,7 @@ func createTestNamespace(prefix string) string {
 	return ns
 }
 
+// PIPELINES-29
 // -----------------------------------------------------------------------
 // DescribeTable 1: Ecosystem Task Pipelines (simple create-verify pattern)
 //
@@ -69,6 +70,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines",
 	// Labels applied to every Entry in this table
 	Label("ecosystem", "e2e"),
 
+	// PIPELINES-29-TC01
 	Entry("buildah pipelinerun", Label("sanity", "buildah"),
 		"buildah-run",
 		[]string{
@@ -78,6 +80,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines",
 		},
 		"successful"),
 
+	// PIPELINES-29-TC03
 	Entry("git-cli pipelinerun", Label("git-cli"),
 		"git-cli-run",
 		[]string{
@@ -87,6 +90,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines",
 		},
 		"successful"),
 
+	// PIPELINES-29-TC08
 	Entry("openshift-client pipelinerun", Label("openshift-client"),
 		"openshift-client-run",
 		[]string{
@@ -94,6 +98,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines",
 		},
 		"successful"),
 
+	// PIPELINES-29-TC09
 	Entry("skopeo-copy pipelinerun", Label("skopeo-copy"),
 		"skopeo-copy-run",
 		[]string{
@@ -101,6 +106,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines",
 		},
 		"successful"),
 
+	// PIPELINES-29-TC10
 	Entry("tkn pipelinerun", Label("tkn"),
 		"tkn-run",
 		[]string{
@@ -108,6 +114,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines",
 		},
 		"successful"),
 
+	// PIPELINES-29-TC13
 	Entry("maven pipelinerun", Label("maven"),
 		"maven-run",
 		[]string{
@@ -118,6 +125,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines",
 		},
 		"successful"),
 
+	// PIPELINES-29-TC14
 	Entry("step action resolvers", Label("sanity"),
 		"git-clone-stepaction-run",
 		[]string{
@@ -127,6 +135,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines",
 		},
 		"successful"),
 
+	// PIPELINES-29-TC21
 	Entry("opc task pipelinerun", Label("sanity", "opc"),
 		"opc-task-run",
 		[]string{
@@ -171,6 +180,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines with Extra Verification",
 
 	Label("ecosystem", "e2e"),
 
+	// PIPELINES-29-TC11
 	Entry("tkn pac pipelinerun", Label("tkn"),
 		"tkn-pac-run",
 		[]string{
@@ -179,6 +189,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines with Extra Verification",
 		"successful",
 		func(ns string) { pipelines.CheckLogVersion(sharedClients, "tkn-pac", ns) }),
 
+	// PIPELINES-29-TC12
 	Entry("tkn version pipelinerun", Label("tkn"),
 		"tkn-version-run",
 		[]string{
@@ -187,6 +198,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines with Extra Verification",
 		"successful",
 		func(ns string) { pipelines.CheckLogVersion(sharedClients, "tkn", ns) }),
 
+	// PIPELINES-29-TC17
 	Entry("helm-upgrade-from-repo pipelinerun", Label("helm"),
 		"helm-upgrade-from-repo-run",
 		[]string{
@@ -197,6 +209,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines with Extra Verification",
 		"successful",
 		func(ns string) { k8s.ValidateDeployments(sharedClients, ns, "test-hello-world") }),
 
+	// PIPELINES-29-TC18
 	Entry("helm-upgrade-from-source pipelinerun", Label("helm"),
 		"helm-upgrade-from-source-run",
 		[]string{
@@ -212,6 +225,7 @@ var _ = DescribeTable("Ecosystem Task Pipelines with Extra Verification",
 // to have the pipelines-scc SCC bound so the container gets a valid UID map.
 var _ = Describe("Ecosystem Special Tasks", Label("ecosystem", "e2e"), func() {
 
+	// PIPELINES-29-TC20
 	It("buildah-ns pipelinerun", Label("sanity", "buildah-ns"), func() {
 		// buildah-ns fails on OCP 4.20+ due to a product bug — skip until fixed.
 		// https://issues.redhat.com/browse/SRVKP-11139
@@ -241,6 +255,7 @@ var _ = Describe("Ecosystem Special Tasks", Label("ecosystem", "e2e"), func() {
 
 	// pull-request pipeline requires copying a secret from the
 	// openshift-pipelines namespace before creating the pipelinerun.
+	// PIPELINES-29-TC19
 	It("pull-request pipelinerun", Label("pull-request"), func() {
 		ns := createTestNamespace("eco-pull-request")
 		lastNamespace = ns
@@ -261,7 +276,7 @@ var _ = Describe("Ecosystem Special Tasks", Label("ecosystem", "e2e"), func() {
 	})
 })
 
-// buildah disconnected pipelinerun
+// PIPELINES-29-TC02
 var _ = Describe("buildah disconnected pipelinerun", Label("ecosystem", "e2e", "disconnected", "buildah"), func() {
 	It("should create and verify buildah disconnected pipelinerun", func() {
 		if !config.Flags.IsDisconnected {

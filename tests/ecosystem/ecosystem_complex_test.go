@@ -23,8 +23,10 @@ import (
 //          to SA -> create pipelinerun -> validate pipelinerun
 // -----------------------------------------------------------------------
 
+// PIPELINES-29
 var _ = Describe("Ecosystem Secret-Link Tasks", Label("ecosystem", "e2e"), func() {
 
+	// PIPELINES-29-TC04
 	It("git-cli read private repo pipelinerun", Label("git-cli"), func() {
 		ns := createTestNamespace("eco-git-cli-priv")
 		lastNamespace = ns
@@ -46,6 +48,7 @@ var _ = Describe("Ecosystem Secret-Link Tasks", Label("ecosystem", "e2e"), func(
 		pipelines.ValidatePipelineRun(sharedClients, "git-cli-read-private-run", "successful", ns)
 	})
 
+	// PIPELINES-29-TC05
 	It("git-cli read private repo using different SA", Label("git-cli"), func() {
 		ns := createTestNamespace("eco-git-cli-sa")
 		lastNamespace = ns
@@ -66,6 +69,7 @@ var _ = Describe("Ecosystem Secret-Link Tasks", Label("ecosystem", "e2e"), func(
 		pipelines.ValidatePipelineRun(sharedClients, "git-cli-read-private-sa-run", "successful", ns)
 	})
 
+	// PIPELINES-29-TC06
 	It("git-clone read private repo taskrun", Label("sanity", "git-clone"), func() {
 		ns := createTestNamespace("eco-git-clone-priv")
 		lastNamespace = ns
@@ -84,6 +88,7 @@ var _ = Describe("Ecosystem Secret-Link Tasks", Label("ecosystem", "e2e"), func(
 		pipelines.ValidatePipelineRun(sharedClients, "git-clone-read-private-pipeline-run", "successful", ns)
 	})
 
+	// PIPELINES-29-TC07
 	It("git-clone read private repo using different SA", Label("git-clone"), func() {
 		ns := createTestNamespace("eco-git-clone-sa")
 		lastNamespace = ns
@@ -119,6 +124,7 @@ var _ = Describe("Ecosystem Secret-Link Tasks", Label("ecosystem", "e2e"), func(
 
 var _ = Describe("Ecosystem Cache Tasks", Label("ecosystem", "e2e", "cache"), func() {
 
+	// PIPELINES-29-TC15
 	It("cache-upload stepaction", Label("sanity"), func() {
 		ns := createTestNamespace("eco-cache-upload")
 		lastNamespace = ns
@@ -152,6 +158,7 @@ var _ = Describe("Ecosystem Cache Tasks", Label("ecosystem", "e2e", "cache"), fu
 		Expect(strings.ToLower(logs2)).To(ContainSubstring("no need to upload cache"))
 	})
 
+	// PIPELINES-29-TC16
 	It("cache upload with revision change", func() {
 		ns := createTestNamespace("eco-cache-rev")
 		lastNamespace = ns
