@@ -64,7 +64,7 @@ func validateTaskRunForSuccessStatus(c *clients.Clients, trname, namespace strin
 
 func validateTaskRunTimeOutFailure(c *clients.Clients, trname, namespace string) {
 	log.Printf("Waiting for TaskRun %s in namespace %s to complete", trname, namespace)
-	err := wait.WaitForTaskRunState(c, "run-giraffe", wait.FailedWithReason("TaskRunTimeout", trname), "TaskRunTimeout")
+	err := wait.WaitForTaskRunState(c, trname, wait.FailedWithReason("TaskRunTimeout", trname), "TaskRunTimeout")
 	if err != nil {
 		Fail(fmt.Sprintf("task run %s was expected to be in TaskRunTimeout state \n %v", trname, err))
 	}

@@ -205,26 +205,37 @@ func VerifyAttestation() error {
 }
 
 // CheckAttestationExists checks whether a cosign attestation exists for the built image.
+// It polls Rekor for up to 5 minutes because indexing can lag after Chains uploads the attestation.
 func CheckAttestationExists() error {
-	// Get UUID
 	_, imageDigest, err := GetImageURLAndDigest()
 	if err != nil {
 		return err
 	}
-	jsonOutput := cmd.MustSucceed("rekor-cli", "search", "--format", "json", "--sha", imageDigest).Stdout()
 
-	// Parse Json output to find UUID
-	type UUID struct {
+	type uuidList struct {
 		UUIDs []string `json:"UUIDs"`
 	}
-	var uuid UUID
-	err = json.Unmarshal([]byte(jsonOutput), &uuid)
-	if err != nil {
-		return fmt.Errorf("error parsing JSON output: %w", err)
-	}
-	rekorUUID := uuid.UUIDs[0]
 
-	// Check the Attestation
+	var rekorUUID string
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	if err := wait.PollUntilContextTimeout(ctx, 15*time.Second, 5*time.Minute, true, func(_ context.Context) (bool, error) {
+		result := cmd.Run("rekor-cli", "search", "--format", "json", "--sha", imageDigest)
+		if result.ExitCode != 0 {
+			log.Printf("Rekor entry not ready yet (exit %d): %s", result.ExitCode, result.Stderr())
+			return false, nil
+		}
+		var u uuidList
+		if err := json.Unmarshal([]byte(result.Stdout()), &u); err != nil || len(u.UUIDs) == 0 {
+			return false, nil
+		}
+		rekorUUID = u.UUIDs[0]
+		return true, nil
+	}); err != nil {
+		return fmt.Errorf("attestation not found in transparency log within 5 minutes for digest %s", imageDigest)
+	}
+
 	if strings.Contains(cmd.Run("rekor-cli", "get", "--uuid", rekorUUID).Stdout(), "getLogEntryByUuidNotFound") {
 		return fmt.Errorf("failed to find attestation for UUID %s", rekorUUID)
 	}

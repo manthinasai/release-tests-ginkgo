@@ -15,9 +15,7 @@ import (
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/triggers"
 )
 
-// PIPELINES-19: Post-upgrade test suite
-// Verifies resources created in pre-upgrade tests survive the operator upgrade.
-var _ = Describe("Olm Openshift Pipelines operator post upgrade tests", Serial, Ordered, ContinueOnFailure,
+var _ = Describe("Olm Openshift Pipelines operator post upgrade tests: PIPELINES-19", Serial, Ordered, ContinueOnFailure,
 	Label("operator", "admin", "post-upgrade", "no-auto-namespace"), func() {
 
 		BeforeAll(func() {
@@ -33,8 +31,7 @@ var _ = Describe("Olm Openshift Pipelines operator post upgrade tests", Serial, 
 			})
 		})
 
-		// PIPELINES-19-TC01
-		It("Verify environment after upgrade", func() {
+		It("Verify environment after upgrade: PIPELINES-19-TC01", func() {
 			ns := "releasetest-upgrade-triggers"
 			lastNamespace = ns
 			sharedClients.NewClientSet(ns)
@@ -65,8 +62,7 @@ var _ = Describe("Olm Openshift Pipelines operator post upgrade tests", Serial, 
 			pipelines.ValidateTaskRun(sharedClients, "bitbucket-run", "Failure", ns)
 		})
 
-		// PIPELINES-19-TC03
-		It("Verify Event listener with TLS after upgrade", Label("e2e", "sanity", "tls", "triggers"), func() {
+		It("Verify Event listener with TLS after upgrade: PIPELINES-19-TC03", Label("e2e", "sanity", "tls", "triggers"), func() {
 			ns := "releasetest-upgrade-tls"
 			lastNamespace = ns
 			sharedClients.NewClientSet(ns)
@@ -80,8 +76,7 @@ var _ = Describe("Olm Openshift Pipelines operator post upgrade tests", Serial, 
 			pipelines.ValidatePipelineRun(sharedClients, "simple-pipeline-run", "successful", ns)
 		})
 
-		// PIPELINES-19-TC04
-		It("Verify secret is linked to SA even after upgrade", Label("e2e", "sanity", "non-admin", "clustertasks", "git-clone"), func() {
+		It("Verify secret is linked to SA even after upgrade: PIPELINES-19-TC04", Label("e2e", "sanity", "non-admin", "clustertasks", "git-clone"), func() {
 			ns := "releasetest-upgrade-pipelines"
 			lastNamespace = ns
 			sharedClients.NewClientSet(ns)
@@ -93,8 +88,7 @@ var _ = Describe("Olm Openshift Pipelines operator post upgrade tests", Serial, 
 			pipelines.ValidatePipelineRun(sharedClients, "git-clone-read-private-pipeline-run", "successful", ns)
 		})
 
-		// PIPELINES-19-TC05
-		It("Verify S2I golang pipeline after upgrade", Label("e2e", "non-admin", "clustertasks", "s2i"), func() {
+		It("Verify S2I golang pipeline after upgrade: PIPELINES-19-TC05", Label("e2e", "non-admin", "clustertasks", "s2i"), func() {
 			ns := "releasetest-upgrade-s2i"
 			lastNamespace = ns
 			sharedClients.NewClientSet(ns)

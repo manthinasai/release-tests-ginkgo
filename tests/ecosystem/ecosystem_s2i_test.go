@@ -9,11 +9,11 @@ import (
 
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/cmd"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/config"
+	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/k8s"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/pipelines"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/triggers"
 )
 
-// PIPELINES-33
 // -----------------------------------------------------------------------
 // S2I Ecosystem Tests
 //
@@ -27,14 +27,15 @@ import (
 // helper function (see helpers.go).
 // -----------------------------------------------------------------------
 
-// PIPELINES-33-TC01
-var _ = Describe("S2I nodejs pipelinerun with route validation", Label("ecosystem", "e2e", "s2i", "sanity"), func() {
+// -----------------------------------------------------------------------
+// TC01: S2I nodejs full flow with route validation
+// -----------------------------------------------------------------------
+
+var _ = Describe("S2I nodejs pipelinerun with route validation: PIPELINES-33-TC01", Label("ecosystem", "e2e", "s2i", "sanity"), func() {
 
 	It("should create nodejs pipeline, verify pipelinerun, expose route and validate response", func() {
-		ns := createTestNamespace("eco-s2i-nodejs-route")
-		lastNamespace = ns
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
+		k8s.WaitForServiceAccount(sharedClients, ns, "pipeline")
 
 		// Create all resources
 		oc.Create("testdata/ecosystem/pipelines/nodejs-ex-git.yaml", ns)
@@ -58,8 +59,11 @@ var _ = Describe("S2I nodejs pipelinerun with route validation", Label("ecosyste
 	})
 })
 
-// PIPELINES-33-TC02
-var _ = Describe("S2I dotnet pipelinerun", Label("ecosystem", "e2e", "s2i"), func() {
+// -----------------------------------------------------------------------
+// TC02: S2I dotnet pipelinerun
+// -----------------------------------------------------------------------
+
+var _ = Describe("S2I dotnet pipelinerun: PIPELINES-33-TC02", Label("ecosystem", "e2e", "s2i"), func() {
 
 	It("should create dotnet pipeline and verify pipelinerun for each imagestream tag", func() {
 		// Skip on ppc64le architecture
@@ -67,10 +71,7 @@ var _ = Describe("S2I dotnet pipelinerun", Label("ecosystem", "e2e", "s2i"), fun
 			Skip(fmt.Sprintf("test skipped on architecture: %s", config.Flags.ClusterArch))
 		}
 
-		ns := createTestNamespace("eco-s2i-dotnet")
-		lastNamespace = ns
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 
 		// Create pipeline and PVC resources
 		oc.Create("testdata/ecosystem/pipelines/s2i-dotnet.yaml", ns)
@@ -81,14 +82,14 @@ var _ = Describe("S2I dotnet pipelinerun", Label("ecosystem", "e2e", "s2i"), fun
 	})
 })
 
-// PIPELINES-33-TC03
-var _ = Describe("S2I golang pipelinerun", Label("ecosystem", "e2e", "sanity", "s2i"), func() {
+// -----------------------------------------------------------------------
+// TC03: S2I golang pipelinerun
+// -----------------------------------------------------------------------
+
+var _ = Describe("S2I golang pipelinerun: PIPELINES-33-TC03", Label("ecosystem", "e2e", "sanity", "s2i"), func() {
 
 	It("should create golang pipeline and verify pipelinerun for each imagestream tag", func() {
-		ns := createTestNamespace("eco-s2i-golang")
-		lastNamespace = ns
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 
 		oc.Create("testdata/ecosystem/pipelines/s2i-go.yaml", ns)
 		oc.Create("testdata/pvc/pvc.yaml", ns)
@@ -97,14 +98,14 @@ var _ = Describe("S2I golang pipelinerun", Label("ecosystem", "e2e", "sanity", "
 	})
 })
 
-// PIPELINES-33-TC04
-var _ = Describe("S2I java pipelinerun", Label("ecosystem", "e2e", "s2i"), func() {
+// -----------------------------------------------------------------------
+// TC04: S2I java pipelinerun
+// -----------------------------------------------------------------------
+
+var _ = Describe("S2I java pipelinerun: PIPELINES-33-TC04", Label("ecosystem", "e2e", "s2i"), func() {
 
 	It("should create java pipeline and verify pipelinerun for each imagestream tag", func() {
-		ns := createTestNamespace("eco-s2i-java")
-		lastNamespace = ns
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 
 		oc.Create("testdata/ecosystem/pipelines/s2i-java.yaml", ns)
 		oc.Create("testdata/pvc/pvc.yaml", ns)
@@ -113,14 +114,14 @@ var _ = Describe("S2I java pipelinerun", Label("ecosystem", "e2e", "s2i"), func(
 	})
 })
 
-// PIPELINES-33-TC05
-var _ = Describe("S2I nodejs pipelinerun", Label("ecosystem", "e2e", "s2i"), func() {
+// -----------------------------------------------------------------------
+// TC05: S2I nodejs pipelinerun
+// -----------------------------------------------------------------------
+
+var _ = Describe("S2I nodejs pipelinerun: PIPELINES-33-TC05", Label("ecosystem", "e2e", "s2i"), func() {
 
 	It("should create nodejs pipeline and verify pipelinerun for each imagestream tag", func() {
-		ns := createTestNamespace("eco-s2i-nodejs")
-		lastNamespace = ns
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 
 		oc.Create("testdata/ecosystem/pipelines/s2i-nodejs.yaml", ns)
 		oc.Create("testdata/pvc/pvc.yaml", ns)
@@ -129,14 +130,14 @@ var _ = Describe("S2I nodejs pipelinerun", Label("ecosystem", "e2e", "s2i"), fun
 	})
 })
 
-// PIPELINES-33-TC06
-var _ = Describe("S2I perl pipelinerun", Label("ecosystem", "e2e", "s2i"), func() {
+// -----------------------------------------------------------------------
+// TC06: S2I perl pipelinerun
+// -----------------------------------------------------------------------
+
+var _ = Describe("S2I perl pipelinerun: PIPELINES-33-TC06", Label("ecosystem", "e2e", "s2i"), func() {
 
 	It("should create perl pipeline and verify pipelinerun for each imagestream tag", func() {
-		ns := createTestNamespace("eco-s2i-perl")
-		lastNamespace = ns
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 
 		oc.Create("testdata/ecosystem/pipelines/s2i-perl.yaml", ns)
 		oc.Create("testdata/pvc/pvc.yaml", ns)
@@ -145,14 +146,14 @@ var _ = Describe("S2I perl pipelinerun", Label("ecosystem", "e2e", "s2i"), func(
 	})
 })
 
-// PIPELINES-33-TC07
-var _ = Describe("S2I php pipelinerun", Label("ecosystem", "e2e", "s2i"), func() {
+// -----------------------------------------------------------------------
+// TC07: S2I php pipelinerun
+// -----------------------------------------------------------------------
+
+var _ = Describe("S2I php pipelinerun: PIPELINES-33-TC07", Label("ecosystem", "e2e", "s2i"), func() {
 
 	It("should create php pipeline and verify pipelinerun for each imagestream tag", func() {
-		ns := createTestNamespace("eco-s2i-php")
-		lastNamespace = ns
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 
 		oc.Create("testdata/ecosystem/pipelines/s2i-php.yaml", ns)
 		oc.Create("testdata/pvc/pvc.yaml", ns)
@@ -161,14 +162,14 @@ var _ = Describe("S2I php pipelinerun", Label("ecosystem", "e2e", "s2i"), func()
 	})
 })
 
-// PIPELINES-33-TC08
-var _ = Describe("S2I python pipelinerun", Label("ecosystem", "e2e", "s2i"), func() {
+// -----------------------------------------------------------------------
+// TC08: S2I python pipelinerun
+// -----------------------------------------------------------------------
+
+var _ = Describe("S2I python pipelinerun: PIPELINES-33-TC08", Label("ecosystem", "e2e", "s2i"), func() {
 
 	It("should create python pipeline and verify pipelinerun for each imagestream tag", func() {
-		ns := createTestNamespace("eco-s2i-python")
-		lastNamespace = ns
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 
 		oc.Create("testdata/ecosystem/pipelines/s2i-python.yaml", ns)
 		oc.Create("testdata/pvc/pvc.yaml", ns)
@@ -177,14 +178,14 @@ var _ = Describe("S2I python pipelinerun", Label("ecosystem", "e2e", "s2i"), fun
 	})
 })
 
-// PIPELINES-33-TC09
-var _ = Describe("S2I ruby pipelinerun", Label("ecosystem", "e2e", "s2i"), func() {
+// -----------------------------------------------------------------------
+// TC09: S2I ruby pipelinerun
+// -----------------------------------------------------------------------
+
+var _ = Describe("S2I ruby pipelinerun: PIPELINES-33-TC09", Label("ecosystem", "e2e", "s2i"), func() {
 
 	It("should create ruby pipeline and verify pipelinerun for each imagestream tag", func() {
-		ns := createTestNamespace("eco-s2i-ruby")
-		lastNamespace = ns
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 
 		oc.Create("testdata/ecosystem/pipelines/s2i-ruby.yaml", ns)
 		oc.Create("testdata/pvc/pvc.yaml", ns)

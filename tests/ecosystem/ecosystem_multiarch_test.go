@@ -10,7 +10,7 @@ import (
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/pipelines"
 )
 
-// PIPELINES-32
+// ========================================================================
 // ========================================================================
 //
 // These tests verify ecosystem tasks on different CPU architectures.
@@ -18,16 +18,16 @@ import (
 // architecture doesn't match the required architecture.
 //
 // Test Cases:
-//   PIPELINES-32-TC01: jib-maven pipelinerun (amd64)
-//   PIPELINES-32-TC02: jib-maven P&Z pipelinerun (ppc64le, s390x, arm64)
-//   PIPELINES-32-TC03: kn-apply pipelinerun (amd64)
-//   PIPELINES-32-TC04: kn-apply p&z pipelinerun (ppc64le, s390x)
-//   PIPELINES-32-TC05: kn pipelinerun (amd64)
-//   PIPELINES-32-TC06: kn p&z pipelinerun (ppc64le, s390x)
+//   TC01: jib-maven pipelinerun (amd64)
+//   TC02: jib-maven P&Z pipelinerun (ppc64le, s390x, arm64)
+//   TC03: kn-apply pipelinerun (amd64)
+//   TC04: kn-apply p&z pipelinerun (ppc64le, s390x)
+//   TC05: kn pipelinerun (amd64)
+//   TC06: kn p&z pipelinerun (ppc64le, s390x)
 // ========================================================================
 
-// PIPELINES-32-TC01
-var _ = Describe("jib-maven pipelinerun", Label("ecosystem", "e2e", "sanity", "jib-maven"), func() {
+// TC01: jib-maven pipelinerun (amd64)
+var _ = Describe("jib-maven pipelinerun: PIPELINES-32-TC01", Label("ecosystem", "e2e", "sanity", "jib-maven"), func() {
 	It("should create jib-maven pipelinerun with registry credentials", func() {
 		if len([]string{"amd64"}) > 0 {
 			archMatch := false
@@ -42,9 +42,7 @@ var _ = Describe("jib-maven pipelinerun", Label("ecosystem", "e2e", "sanity", "j
 			}
 		}
 
-		ns := createTestNamespace("eco-jib-maven")
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 		k8s.WaitForServiceAccount(sharedClients, ns, "pipeline")
 
 		oc.ValidateAndCreateJibMavenSecret(ns)
@@ -57,8 +55,8 @@ var _ = Describe("jib-maven pipelinerun", Label("ecosystem", "e2e", "sanity", "j
 	})
 })
 
-// PIPELINES-32-TC02
-var _ = Describe("jib-maven P&Z pipelinerun", Label("ecosystem", "e2e", "sanity", "jib-maven"), func() {
+// TC02: jib-maven P&Z pipelinerun (ppc64le, s390x, arm64)
+var _ = Describe("jib-maven P&Z pipelinerun: PIPELINES-32-TC02", Label("ecosystem", "e2e", "sanity", "jib-maven"), func() {
 	It("should create jib-maven pipelinerun with registry credentials", func() {
 		if len([]string{"ppc64le", "s390x", "arm64"}) > 0 {
 			archMatch := false
@@ -73,9 +71,7 @@ var _ = Describe("jib-maven P&Z pipelinerun", Label("ecosystem", "e2e", "sanity"
 			}
 		}
 
-		ns := createTestNamespace("eco-jib-maven-pz")
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 		k8s.WaitForServiceAccount(sharedClients, ns, "pipeline")
 
 		oc.Create("testdata/ecosystem/pipelines/jib-maven-pz.yaml", ns)
@@ -86,8 +82,8 @@ var _ = Describe("jib-maven P&Z pipelinerun", Label("ecosystem", "e2e", "sanity"
 	})
 })
 
-// PIPELINES-32-TC03
-var _ = Describe("kn-apply pipelinerun", Label("ecosystem", "e2e", "kn-apply"), func() {
+// TC03: kn-apply pipelinerun (amd64)
+var _ = Describe("kn-apply pipelinerun: PIPELINES-32-TC03", Label("ecosystem", "e2e", "kn-apply"), func() {
 	It("should create and verify kn-apply pipelinerun", func() {
 		if len([]string{"amd64"}) > 0 {
 			archMatch := false
@@ -106,9 +102,7 @@ var _ = Describe("kn-apply pipelinerun", Label("ecosystem", "e2e", "kn-apply"), 
 			Skip("serving.knative.dev API not available on this cluster — Knative Serving is not installed")
 		}
 
-		ns := createTestNamespace("eco-kn-apply")
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 		k8s.WaitForServiceAccount(sharedClients, ns, "pipeline")
 		// kn tasks need permission to manage Knative Service resources in the namespace
 		oc.AddRoleToServiceAccount("cluster-admin", "pipeline", ns)
@@ -119,8 +113,8 @@ var _ = Describe("kn-apply pipelinerun", Label("ecosystem", "e2e", "kn-apply"), 
 	})
 })
 
-// PIPELINES-32-TC04
-var _ = Describe("kn-apply p&z pipelinerun", Label("ecosystem", "e2e", "kn-apply"), func() {
+// TC04: kn-apply p&z pipelinerun (ppc64le, s390x)
+var _ = Describe("kn-apply p&z pipelinerun: PIPELINES-32-TC04", Label("ecosystem", "e2e", "kn-apply"), func() {
 	It("should create and verify kn-apply pipelinerun", func() {
 		if len([]string{"ppc64le", "s390x"}) > 0 {
 			archMatch := false
@@ -139,9 +133,7 @@ var _ = Describe("kn-apply p&z pipelinerun", Label("ecosystem", "e2e", "kn-apply
 			Skip("serving.knative.dev API not available on this cluster — Knative Serving is not installed")
 		}
 
-		ns := createTestNamespace("eco-kn-apply-pz")
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 		k8s.WaitForServiceAccount(sharedClients, ns, "pipeline")
 		oc.AddRoleToServiceAccount("cluster-admin", "pipeline", ns)
 
@@ -151,8 +143,8 @@ var _ = Describe("kn-apply p&z pipelinerun", Label("ecosystem", "e2e", "kn-apply
 	})
 })
 
-// PIPELINES-32-TC05
-var _ = Describe("kn pipelinerun", Label("ecosystem", "e2e", "kn"), func() {
+// TC05: kn pipelinerun (amd64)
+var _ = Describe("kn pipelinerun: PIPELINES-32-TC05", Label("ecosystem", "e2e", "kn"), func() {
 	It("should create and verify kn pipelinerun", func() {
 		if len([]string{"amd64"}) > 0 {
 			archMatch := false
@@ -171,9 +163,7 @@ var _ = Describe("kn pipelinerun", Label("ecosystem", "e2e", "kn"), func() {
 			Skip("serving.knative.dev API not available on this cluster — Knative Serving is not installed")
 		}
 
-		ns := createTestNamespace("eco-kn")
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 		k8s.WaitForServiceAccount(sharedClients, ns, "pipeline")
 		oc.AddRoleToServiceAccount("cluster-admin", "pipeline", ns)
 
@@ -183,8 +173,8 @@ var _ = Describe("kn pipelinerun", Label("ecosystem", "e2e", "kn"), func() {
 	})
 })
 
-// PIPELINES-32-TC06
-var _ = Describe("kn p&z pipelinerun", Label("ecosystem", "e2e", "kn"), func() {
+// TC06: kn p&z pipelinerun (ppc64le, s390x)
+var _ = Describe("kn p&z pipelinerun: PIPELINES-32-TC06", Label("ecosystem", "e2e", "kn"), func() {
 	It("should create and verify kn pipelinerun", func() {
 		if len([]string{"ppc64le", "s390x"}) > 0 {
 			archMatch := false
@@ -203,9 +193,7 @@ var _ = Describe("kn p&z pipelinerun", Label("ecosystem", "e2e", "kn"), func() {
 			Skip("serving.knative.dev API not available on this cluster — Knative Serving is not installed")
 		}
 
-		ns := createTestNamespace("eco-kn-pz")
-		DeferCleanup(oc.DeleteProjectIgnoreErrors, ns)
-		sharedClients.NewClientSet(ns)
+		ns := lastNamespace
 		k8s.WaitForServiceAccount(sharedClients, ns, "pipeline")
 		oc.AddRoleToServiceAccount("cluster-admin", "pipeline", ns)
 

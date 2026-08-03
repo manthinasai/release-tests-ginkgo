@@ -11,7 +11,7 @@ import (
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/store"
 )
 
-var _ = Describe("Verify Addon E2E", Serial, Ordered, ContinueOnFailure,
+var _ = Describe("Verify Addon E2E: PIPELINES-15", Serial, Ordered, ContinueOnFailure,
 	Label("e2e", "integration", "operator", "addon", "admin"), func() {
 
 		BeforeAll(func() {
@@ -24,8 +24,7 @@ var _ = Describe("Verify Addon E2E", Serial, Ordered, ContinueOnFailure,
 			})
 		})
 
-		// PIPELINES-15-TC06
-		It("Disable/Enable resolverTasks", Label("sanity", "resolvertasks"), func() {
+		It("Disable/Enable resolverTasks: PIPELINES-15-TC06", Label("sanity", "resolvertasks"), func() {
 			oc.UpdateAddonConfig("false", "false", "")
 			operator.AssertTaskPresence("openshift-pipelines", "s2i-java", false)
 
@@ -33,8 +32,7 @@ var _ = Describe("Verify Addon E2E", Serial, Ordered, ContinueOnFailure,
 			operator.AssertTaskPresence("openshift-pipelines", "s2i-java", true)
 		})
 
-		// PIPELINES-15-TC07
-		It("Disable/Enable resolverTasks with additional Tasks", Label("resolvertasks"), func() {
+		It("Disable/Enable resolverTasks with additional Tasks: PIPELINES-15-TC07", Label("resolvertasks"), func() {
 			oc.UpdateAddonConfig("true", "false", "")
 			operator.AssertTaskPresence("openshift-pipelines", "s2i-java", true)
 
@@ -53,8 +51,7 @@ var _ = Describe("Verify Addon E2E", Serial, Ordered, ContinueOnFailure,
 			operator.AssertTaskPresence("openshift-pipelines", "hello", true)
 		})
 
-		// PIPELINES-15-TC08
-		It("Disable/Enable pipeline templates", Label("sanity", "resolvertasks"), func() {
+		It("Disable/Enable pipeline templates: PIPELINES-15-TC08", Label("sanity", "resolvertasks"), func() {
 			oc.UpdateAddonConfig("true", "true", "")
 			operator.AssertPipelinesPresence("openshift", true)
 
@@ -65,19 +62,16 @@ var _ = Describe("Verify Addon E2E", Serial, Ordered, ContinueOnFailure,
 			operator.AssertPipelinesPresence("openshift", true)
 		})
 
-		// PIPELINES-15-TC05
-		It("Enable pipeline templates when clustertask is disabled", Label("negative"), func() {
+		It("Enable pipeline templates when clustertask is disabled: PIPELINES-15-TC05", Label("negative"), func() {
 			oc.UpdateAddonConfig("false", "true",
 				"pipelineTemplates cannot be true if resolverTask is false")
 		})
 
-		// PIPELINES-15-TC09
-		It("Verify versioned ecosystem tasks", func() {
+		It("Verify versioned ecosystem tasks: PIPELINES-15-TC09", func() {
 			operator.VerifyVersionedTasks()
 		})
 
-		// PIPELINES-15-TC10
-		It("Verify versioned stepaction tasks", func() {
+		It("Verify versioned stepaction tasks: PIPELINES-15-TC10", func() {
 			operator.VerifyVersionedStepActions()
 		})
 	})

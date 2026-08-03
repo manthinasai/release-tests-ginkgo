@@ -11,9 +11,7 @@ import (
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/triggers"
 )
 
-// PIPELINES-18: Pre-upgrade test suite
-// Namespaces created here must persist for post-upgrade tests to verify.
-var _ = Describe("Openshift Pipelines pre upgrade specs", Serial, Ordered, ContinueOnFailure,
+var _ = Describe("Openshift Pipelines pre upgrade specs: PIPELINES-18", Serial, Ordered, ContinueOnFailure,
 	Label("operator", "admin", "pre-upgrade", "no-auto-namespace"), func() {
 
 		BeforeAll(func() {
@@ -21,8 +19,7 @@ var _ = Describe("Openshift Pipelines pre upgrade specs", Serial, Ordered, Conti
 			// They must persist for post-upgrade tests to verify.
 		})
 
-		// PIPELINES-18-TC01
-		It("Setup environment for upgrade test", func() {
+		It("Setup environment for upgrade test: PIPELINES-18-TC01", func() {
 			ns := "releasetest-upgrade-triggers"
 			lastNamespace = ns
 			sharedClients.NewClientSet(ns)
@@ -86,8 +83,7 @@ var _ = Describe("Openshift Pipelines pre upgrade specs", Serial, Ordered, Conti
 			oc.DeleteResourceInNamespace("taskrun", "bitbucket-run", ns)
 		})
 
-		// PIPELINES-18-TC03
-		It("Setup Eventlistener with TLS enabled pre upgrade", Label("e2e", "sanity", "tls", "triggers"), func() {
+		It("Setup Eventlistener with TLS enabled pre upgrade: PIPELINES-18-TC03", Label("e2e", "sanity", "tls", "triggers"), func() {
 			ns := "releasetest-upgrade-tls"
 			lastNamespace = ns
 			sharedClients.NewClientSet(ns)
@@ -110,8 +106,7 @@ var _ = Describe("Openshift Pipelines pre upgrade specs", Serial, Ordered, Conti
 			oc.DeleteResourceInNamespace("pipelinerun", "simple-pipeline-run", ns)
 		})
 
-		// PIPELINES-18-TC04
-		It("Setup link secret to pipeline SA", Label("e2e", "sanity", "non-admin", "clustertasks", "git-clone"), func() {
+		It("Setup link secret to pipeline SA: PIPELINES-18-TC04", Label("e2e", "sanity", "non-admin", "clustertasks", "git-clone"), func() {
 			ns := "releasetest-upgrade-pipelines"
 			lastNamespace = ns
 			sharedClients.NewClientSet(ns)
@@ -129,8 +124,7 @@ var _ = Describe("Openshift Pipelines pre upgrade specs", Serial, Ordered, Conti
 			oc.DeleteResourceInNamespace("pipelinerun", "git-clone-read-private-pipeline-run", ns)
 		})
 
-		// PIPELINES-18-TC05
-		It("Setup S2I golang pipeline pre upgrade", Label("e2e", "non-admin", "clustertasks", "s2i"), func() {
+		It("Setup S2I golang pipeline pre upgrade: PIPELINES-18-TC05", Label("e2e", "non-admin", "clustertasks", "s2i"), func() {
 			ns := "releasetest-upgrade-s2i"
 			lastNamespace = ns
 			sharedClients.NewClientSet(ns)

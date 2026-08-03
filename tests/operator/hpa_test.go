@@ -9,15 +9,14 @@ import (
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/store"
 )
 
-var _ = Describe("Verify HPA", Serial,
+var _ = Describe("Verify HPA: PIPELINES-13", Serial,
 	Label("operator", "admin", "hpa"), func() {
 
 		BeforeEach(func() {
 			operator.ValidateOperatorInstallStatus(sharedClients, store.GetCRNames())
 		})
 
-		// PIPELINES-13-TC01
-		It("Test HPA for tekton-pipelines-webhook deployment", func() {
+		It("Test HPA for tekton-pipelines-webhook deployment: PIPELINES-13-TC01", func() {
 			hpaList := cmd.MustSucceed("oc", "get", "hpa", "-n", "openshift-pipelines", "-o", "name").Stdout()
 			Expect(hpaList).To(ContainSubstring("tekton-pipelines-webhook"),
 				"HPA for tekton-pipelines-webhook not found in openshift-pipelines")

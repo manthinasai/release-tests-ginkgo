@@ -15,6 +15,9 @@ artifacts/
 # Test artifact files produced during test runs
 tests/chains/sign
 
+# Temporary cosign public key used for testing
+testdata/chains/key/
+
 # Temporary TLS certificates used for testing
 testdata/triggers/certs/ca.srl
 testdata/triggers/certs/server.crt

@@ -18,7 +18,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.1
 	github.com/openshift-pipelines/manual-approval-gate v0.9.0
-	github.com/openshift-pipelines/pipelines-as-code v0.48.0
+	github.com/openshift-pipelines/pipelines-as-code v0.49.0
 	github.com/openshift/api v0.0.0-20260511191110-9b69e5fa27e9
 	// Upgraded from v0.0.0-20240523113335 to May 2026 version which uses
 	// sigs.k8s.io/structured-merge-diff/v6 and go.yaml.in/yaml/v3 (new canonical paths).
@@ -27,17 +27,17 @@ require (
 	github.com/operator-framework/operator-lifecycle-manager v0.43.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/common v0.67.5
+	github.com/prometheus/common v0.69.0
 	github.com/tektoncd/operator v0.80.0
-	github.com/tektoncd/pipeline v1.13.1
+	github.com/tektoncd/pipeline v1.14.0
 	github.com/tektoncd/triggers v0.36.0
 	github.com/xanzy/go-gitlab v0.109.0
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.5.2
-	k8s.io/api v0.35.5
-	k8s.io/apimachinery v0.35.5
+	k8s.io/api v0.35.6
+	k8s.io/apimachinery v0.36.2
 	k8s.io/client-go v1.5.2
-	knative.dev/pkg v0.0.0-20260422015212-ec452872dcc1
+	knative.dev/pkg v0.0.0-20260531000007-52dbd5ece63f
 )
 
 require (
@@ -147,7 +147,7 @@ require (
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/apiextensions-apiserver v0.35.5 // indirect
+	k8s.io/apiextensions-apiserver v0.35.6 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260330154417-16be699c7b31 // indirect
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5 // indirect
