@@ -151,11 +151,28 @@ func validatePipelineRunCancel(c *clients.Clients, prname, namespace string) {
 	wg.Wait()
 }
 
+// WaitForPipelineRunCancelled waits until the given PipelineRun reaches the Cancelled state.
+func WaitForPipelineRunCancelled(c *clients.Clients, prname, namespace string) {
+	log.Printf("Waiting for PipelineRun %s in namespace %s to be cancelled", prname, namespace)
+	if err := wait.WaitForPipelineRunState(c, prname, wait.FailedWithReason("Cancelled", prname), "Cancelled"); err != nil { //nolint:misspell // "Cancelled" is the Tekton PipelineRun reason string
+		Fail(fmt.Sprintf("Error waiting for PipelineRun %q to be cancelled in namespace %s: %s", prname, namespace, err))
+	}
+}
+
 // ValidatePipelineRun dispatches to the correct validation function based on the expected status.
+// It first polls until the PipelineRun exists (trigger-based tests create it asynchronously).
 func ValidatePipelineRun(c *clients.Clients, prname, status, namespace string) {
-	pr, err := c.PipelineRunClient.Get(c.Ctx, prname, metav1.GetOptions{})
-	if err != nil {
-		Fail(fmt.Sprintf("failed to get pipeline run %s in namespace %s \n %v", prname, namespace, err))
+	var pr *v1.PipelineRun
+	pollErr := w.PollUntilContextTimeout(c.Ctx, config.APIRetry, 2*time.Minute, false, func(context.Context) (bool, error) {
+		var getErr error
+		pr, getErr = c.PipelineRunClient.Get(c.Ctx, prname, metav1.GetOptions{})
+		if getErr != nil {
+			return false, nil // not yet created; keep polling
+		}
+		return true, nil
+	})
+	if pollErr != nil || pr == nil {
+		Fail(fmt.Sprintf("timed out waiting for pipeline run %s to be created in namespace %s", prname, namespace))
 	}
 
 	// Verify status of PipelineRun (wait for it)
@@ -226,8 +243,13 @@ func WatchForPipelineRun(c *clients.Clients, namespace string) int {
 // AssertForNoNewPipelineRunCreation asserts that no new PipelineRuns are created
 // in the namespace within a 1-minute observation window.
 func AssertForNoNewPipelineRunCreation(c *clients.Clients, namespace string) {
+	// List first to get the current resourceVersion so the watch only sees events
+	// after this point — without this, Kubernetes re-emits existing runs as ADDED.
+	list, err := c.PipelineRunClient.List(c.Ctx, metav1.ListOptions{})
+	Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("failed to list pipeline runs in namespace %s", namespace))
+
 	count := 0
-	watchRun, err := k8s.Watch(c.Ctx, prGroupResource, c, namespace, metav1.ListOptions{})
+	watchRun, err := k8s.Watch(c.Ctx, prGroupResource, c, namespace, metav1.ListOptions{ResourceVersion: list.ResourceVersion})
 	Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("failed to watch pipeline runs in namespace %s", namespace))
 
 	ch := watchRun.ResultChan()

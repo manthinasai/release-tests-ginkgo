@@ -7,13 +7,9 @@ import (
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/monitoring"
 )
 
-var _ = Describe("OpenShift Pipelines Monitoring", Label("metrics", "e2e", "admin", "sanity"), func() {
+var _ = Describe("OpenShift Pipelines Monitoring: PIPELINES-01", Label("metrics", "e2e", "admin", "sanity"), func() {
 
-	BeforeEach(func() {
-		lastNamespace = "openshift-pipelines"
-	})
-
-	Describe("OpenShift pipelines metrics acceptance tests", func() {
+	Describe("OpenShift pipelines metrics acceptance tests: PIPELINES-01-TC01", Ordered, ContinueOnFailure, func() {
 
 		DescribeTable("verifies job health status metrics",
 			func(jobName, expectedValue string) {

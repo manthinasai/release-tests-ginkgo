@@ -3,6 +3,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	"gotest.tools/v3/icmd"
@@ -48,4 +49,27 @@ func AssertIncreasedTimeout(exp icmd.Expected, timeout time.Duration, args ...st
 // RunIncreasedTimeout executes a command with the specified timeout.
 func RunIncreasedTimeout(timeout time.Duration, cmd ...string) *icmd.Result {
 	return icmd.RunCmd(icmd.Cmd{Command: cmd, Timeout: timeout})
+}
+
+// RunWithEnv executes a command with additional environment variables appended to the current env.
+func RunWithEnv(env []string, args ...string) *icmd.Result {
+	return icmd.RunCmd(icmd.Cmd{Command: args, Timeout: config.CLITimeout, Env: env})
+}
+
+// MustSucceedWithEnv asserts exit code 0 for a command run with extra env vars.
+func MustSucceedWithEnv(env []string, args ...string) *icmd.Result {
+	res := RunWithEnv(env, args...)
+	Expect(res.ExitCode).To(Equal(0),
+		fmt.Sprintf("expected exit code 0 but got %d\nstdout:\n%s\nstderr:\n%s",
+			res.ExitCode, res.Stdout(), res.Stderr()))
+	return res
+}
+
+// MustSucceedWithStdin runs a command with stdin piped from the given reader and asserts exit code 0.
+func MustSucceedWithStdin(stdin io.Reader, args ...string) *icmd.Result {
+	res := icmd.RunCmd(icmd.Cmd{Command: args, Timeout: config.CLITimeout, Stdin: stdin})
+	Expect(res.ExitCode).To(Equal(0),
+		fmt.Sprintf("expected exit code 0 but got %d\nstdout:\n%s\nstderr:\n%s",
+			res.ExitCode, res.Stdout(), res.Stderr()))
+	return res
 }

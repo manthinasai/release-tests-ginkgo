@@ -39,7 +39,7 @@ func CleanupClusterResolverNamespaces() {
 	}
 }
 
-var _ = Describe("Cluster resolver cross-namespace resolution", Label("e2e", "sanity"), func() {
+var _ = Describe("Cluster resolver cross-namespace resolution: PIPELINES-23-TC01", Label("e2e", "sanity"), func() {
 	var ns string
 
 	BeforeEach(func() {
@@ -54,7 +54,7 @@ var _ = Describe("Cluster resolver cross-namespace resolution", Label("e2e", "sa
 	})
 })
 
-var _ = Describe("Cluster resolver same-namespace resolution", Label("e2e"), func() {
+var _ = Describe("Cluster resolver same-namespace resolution: PIPELINES-23-TC02", Label("e2e"), func() {
 	var ns string
 
 	BeforeEach(func() {

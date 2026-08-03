@@ -8,9 +8,9 @@ import (
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/opc"
 )
 
-var _ = Describe("Versions of OpenShift Pipelines", Label("versions", "e2e"), func() {
+var _ = Describe("Versions of OpenShift Pipelines: PIPELINES-22", Label("versions", "e2e"), func() {
 
-	Describe("Check server side components versions", Label("sanity"), func() {
+	Describe("Check server side components versions: PIPELINES-22-TC01", Label("sanity"), func() {
 
 		DescribeTable("verifies component version",
 			func(component, envVar string) {
@@ -34,7 +34,7 @@ var _ = Describe("Versions of OpenShift Pipelines", Label("versions", "e2e"), fu
 		)
 	})
 
-	Describe("Check client versions", Label("sanity"), Ordered, func() {
+	Describe("Check client versions: PIPELINES-22-TC02", Label("sanity"), Ordered, ContinueOnFailure, func() {
 		It("downloads and extracts CLI from cluster", func() {
 			By("Downloading CLI binaries from cluster")
 			opc.DownloadCLIFromCluster()

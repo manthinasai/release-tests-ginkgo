@@ -811,6 +811,137 @@ func CleanupPAC(c *clients.Clients, namespace string, projectID int, smeeDeploym
 	return nil
 }
 
+// UpdatePushOnTargetBranch updates the pipelinesascode.tekton.dev/on-target-branch annotation
+// in the generated push.yaml file.
+func UpdatePushOnTargetBranch(target string) error {
+	data, err := os.ReadFile(pushFileName)
+	if err != nil {
+		return fmt.Errorf("failed to read push YAML file %s: %w", pushFileName, err)
+	}
+
+	var content map[string]any
+	if err := yaml.Unmarshal(data, &content); err != nil {
+		return fmt.Errorf("failed to unmarshal push YAML: %w", err)
+	}
+
+	meta, ok := content["metadata"].(map[any]any)
+	if !ok {
+		return fmt.Errorf("push YAML missing metadata section")
+	}
+	anns, ok := meta["annotations"].(map[any]any)
+	if !ok {
+		anns = map[any]any{}
+		meta["annotations"] = anns
+	}
+
+	anns["pipelinesascode.tekton.dev/on-target-branch"] = target
+
+	out, err := yaml.Marshal(content)
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated push YAML: %w", err)
+	}
+
+	if err := os.WriteFile(pushFileName, out, 0600); err != nil {
+		return fmt.Errorf("failed to write updated push YAML file: %w", err)
+	}
+
+	if err := validateYAML(out); err != nil {
+		return fmt.Errorf("invalid YAML content after updating on-target-branch: %w", err)
+	}
+
+	log.Printf("Updated pipelinesascode.tekton.dev/on-target-branch to %q in %s\n", target, pushFileName)
+	return nil
+}
+
+// CreateTagOnBranch creates a Git tag on the specified branch in the current GitLab project.
+func CreateTagOnBranch(projectID int, tagName, branch string) error {
+	opts := &gitlab.CreateTagOptions{
+		TagName: gitlab.Ptr(tagName),
+		Ref:     gitlab.Ptr(branch),
+	}
+
+	if _, _, err := client.Tags.CreateTag(projectID, opts); err != nil {
+		return fmt.Errorf("failed to create tag %q on branch %q: %w", tagName, branch, err)
+	}
+	log.Printf("Successfully created tag %q on branch %q\n", tagName, branch)
+	return nil
+}
+
+// getCommitSHAForTag resolves a Git tag to its commit SHA in the current GitLab project.
+func getCommitSHAForTag(projectID int, tag string) (string, error) {
+	t, _, err := client.Tags.GetTag(projectID, tag)
+	if err != nil {
+		return "", fmt.Errorf("failed to get tag %q: %w", tag, err)
+	}
+	if t.Commit == nil || t.Commit.ID == "" {
+		return "", fmt.Errorf("tag %q has no associated commit", tag)
+	}
+	return t.Commit.ID, nil
+}
+
+// AddCommitCommentOnTag adds a commit comment on the commit referenced by the given tag.
+func AddCommitCommentOnTag(projectID int, comment, tag string) error {
+	sha, err := getCommitSHAForTag(projectID, tag)
+	if err != nil {
+		return fmt.Errorf("failed to resolve tag %q to commit: %w", tag, err)
+	}
+
+	opts := &gitlab.PostCommitCommentOptions{
+		Note: gitlab.Ptr(comment),
+	}
+
+	if _, _, err := client.Commits.PostCommitComment(projectID, sha, opts); err != nil {
+		return fmt.Errorf("failed to add comment %q on tag %q (commit %s): %w", comment, tag, sha, err)
+	}
+	log.Printf("Successfully added comment %q on tag %q (commit %s)\n", comment, tag, sha)
+	return nil
+}
+
+// getPipelineRunNameFromPushYAML reads the generated push.yaml and returns the
+// PipelineRun metadata.name defined there.
+func getPipelineRunNameFromPushYAML() (string, error) {
+	data, err := os.ReadFile(pushFileName)
+	if err != nil {
+		return "", fmt.Errorf("failed to read push YAML file %s: %w", pushFileName, err)
+	}
+
+	var content map[string]any
+	if err := yaml.Unmarshal(data, &content); err != nil {
+		return "", fmt.Errorf("failed to unmarshal push YAML: %w", err)
+	}
+
+	meta, ok := content["metadata"].(map[any]any)
+	if !ok {
+		return "", fmt.Errorf("push YAML missing metadata section")
+	}
+	nameVal, ok := meta["name"].(string)
+	if !ok || nameVal == "" {
+		return "", fmt.Errorf("push YAML missing or invalid metadata.name")
+	}
+	log.Printf("PipelineRun name from push.yaml: %s\n", nameVal)
+	return nameVal, nil
+}
+
+// AddTestCommentForLatestPipelineRunOnTag adds a /test comment for the latest PipelineRun on the given tag.
+func AddTestCommentForLatestPipelineRunOnTag(projectID int, tag string) error {
+	prName, err := getPipelineRunNameFromPushYAML()
+	if err != nil {
+		return fmt.Errorf("failed to get PipelineRun name: %w", err)
+	}
+	comment := fmt.Sprintf("/test %s tag:%s", prName, tag)
+	return AddCommitCommentOnTag(projectID, comment, tag)
+}
+
+// AddCancelCommentForLatestPipelineRunOnTag adds a /cancel comment for the latest PipelineRun on the given tag.
+func AddCancelCommentForLatestPipelineRunOnTag(projectID int, tag string) error {
+	prName, err := getPipelineRunNameFromPushYAML()
+	if err != nil {
+		return fmt.Errorf("failed to get PipelineRun name: %w", err)
+	}
+	comment := fmt.Sprintf("/cancel %s tag:%s", prName, tag)
+	return AddCommitCommentOnTag(projectID, comment, tag)
+}
+
 // AssertNumberOfPipelineruns verifies that the expected number of PipelineRuns exist in the
 // namespace within the given timeout (in seconds).
 func AssertNumberOfPipelineruns(c *clients.Clients, _ string, expectedCount, timeoutSeconds int) error {

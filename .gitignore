@@ -14,3 +14,12 @@ artifacts/
 
 # Test artifact files produced during test runs
 tests/chains/sign
+
+# Temporary TLS certificates generated during triggers TLS tests
+testdata/triggers/certs/ca.crt
+testdata/triggers/certs/ca.key
+testdata/triggers/certs/ca.srl
+testdata/triggers/certs/server.crt
+testdata/triggers/certs/server.csr
+testdata/triggers/certs/server.ext
+testdata/triggers/certs/server.key
