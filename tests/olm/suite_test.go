@@ -9,7 +9,6 @@ import (
 
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/clients"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/config"
-	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/diagnostics"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/hooks"
 )
 
@@ -70,8 +69,3 @@ var _ = AfterSuite(func() {
 
 // Automatically create namespace per Describe block
 var _ = hooks.AutoNamespacePerDescribe(&lastNamespace, func() *clients.Clients { return sharedClients })
-
-// Collect diagnostics (pod logs, events, resource state) on test failure.
-// Also sweeps openshift-operators so operator/webhook pod logs are captured.
-var _ = ReportAfterEach(diagnostics.CollectOnFailure(&lastNamespace))
-var _ = ReportAfterEach(diagnostics.CollectOperatorLogsOnFailure())

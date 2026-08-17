@@ -4,6 +4,7 @@ package config
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/user"
 	"path"
@@ -220,6 +221,7 @@ type EnvironmentFlags struct {
 }
 
 func initializeFlags() *EnvironmentFlags {
+	LoadDefaultProperties()
 	var f EnvironmentFlags
 	flag.StringVar(&f.Cluster, "cluster", "",
 		"Provide the cluster to test against. Defaults to the current cluster in kubeconfig.")
@@ -318,6 +320,34 @@ func initializeFlags() *EnvironmentFlags {
 	f.IsDisconnected = defaultIsDiconnected
 
 	return &f
+}
+
+// LoadDefaultProperties reads env/default/default.properties and sets each key as an
+// environment variable, but only when the variable is not already set. This replicates
+// Gauge's automatic loading of env/default/*.properties before spec execution.
+func LoadDefaultProperties() {
+	envFile := filepath.Join(Dir(), "..", "env", "default", "default.properties")
+	data, err := os.ReadFile(envFile)
+	if err != nil {
+		return
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		if os.Getenv(key) == "" {
+			if err := os.Setenv(key, value); err != nil {
+				log.Printf("warning: failed to set env %s: %v", key, err)
+			}
+		}
+	}
 }
 
 // Dir returns the absolute path to the template directory.

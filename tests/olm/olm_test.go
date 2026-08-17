@@ -17,9 +17,9 @@ import (
 var oc = occmd.OC{}
 var rnames = utils.ResourceNames{TektonConfig: "config"}
 
-var _ = Describe("OLM Operator Lifecycle", Serial, Label("olm", "admin"), func() {
+var _ = Describe("OLM Operator Lifecycle: PIPELINES-09", Serial, Label("olm", "admin"), func() {
 
-	Describe("Install openshift-pipelines operator", Label("install", "sanity"), Ordered, func() {
+	Describe("Install openshift-pipelines operator: PIPELINES-09-TC01", Label("install", "sanity"), Ordered, ContinueOnFailure, func() {
 		It("subscribes to operator", func() {
 			_, err := olmpkg.SubscribeAndWaitForOperatorToBeReady(
 				sharedClients,
@@ -163,7 +163,7 @@ var _ = Describe("OLM Operator Lifecycle", Serial, Label("olm", "admin"), func()
 		})
 	})
 
-	Describe("Upgrade openshift-pipelines operator", Label("upgrade"), Ordered, func() {
+	Describe("Upgrade openshift-pipelines operator: PIPELINES-09-TC02", Label("upgrade"), Ordered, ContinueOnFailure, func() {
 		It("upgrades operator subscription", func() {
 			upgradeChannel := os.Getenv("UPGRADE_CHANNEL")
 			if upgradeChannel == "" {
@@ -195,7 +195,7 @@ var _ = Describe("OLM Operator Lifecycle", Serial, Label("olm", "admin"), func()
 		})
 	})
 
-	Describe("Uninstall openshift-pipelines operator", Label("uninstall"), Ordered, func() {
+	Describe("Uninstall openshift-pipelines operator: PIPELINES-09-TC03", Label("uninstall"), Ordered, ContinueOnFailure, func() {
 		It("uninstalls the operator", func() {
 			err := olmpkg.OperatorCleanup(sharedClients, config.Flags.SubscriptionName)
 			Expect(err).NotTo(HaveOccurred(), "Failed to uninstall operator")

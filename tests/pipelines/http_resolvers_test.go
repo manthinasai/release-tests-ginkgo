@@ -7,7 +7,7 @@ import (
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/store"
 )
 
-var _ = Describe("Test HTTP resolver functionality", Label("e2e", "sanity"), func() {
+var _ = Describe("Test HTTP resolver functionality: PIPELINES-31-TC01", Label("e2e", "sanity"), func() {
 	var ns string
 
 	BeforeEach(func() {

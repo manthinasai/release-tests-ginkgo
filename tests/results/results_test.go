@@ -13,9 +13,9 @@ import (
 )
 
 var oc = occmd.OC{}
-var _ = Describe("Tekton Results", Label("results", "e2e"), func() {
+var _ = Describe("Tekton Results: PIPELINES-26", Label("results", "e2e"), func() {
 
-	Describe("Test Tekton results with TaskRun", Label("sanity"), Ordered, func() {
+	Describe("Test Tekton results with TaskRun: PIPELINES-26-TC01", Ordered, ContinueOnFailure, func() {
 		It("verifies golang imagestream exists", func() {
 			cmd.MustSucceed("oc", "get", "is", "golang", "-n", "openshift")
 		})
@@ -44,7 +44,7 @@ var _ = Describe("Tekton Results", Label("results", "e2e"), func() {
 		})
 	})
 
-	Describe("Test Tekton results with PipelineRun", Label("sanity"), Ordered, func() {
+	Describe("Test Tekton results with PipelineRun: PIPELINES-26-TC02", Label("sanity"), Ordered, ContinueOnFailure, func() {
 		It("verifies golang imagestream exists", func() {
 			cmd.MustSucceed("oc", "get", "is", "golang", "-n", "openshift")
 		})

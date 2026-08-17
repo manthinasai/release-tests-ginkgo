@@ -19,7 +19,7 @@ import (
 // TC-01 through TC-11 execute sequentially, matching the Gauge spec order.
 // Tekton-pruner is enabled by TC-01 and stays enabled through TC-11; the AfterAll
 // restores the cluster to its pre-test state (legacy pruner re-enabled).
-var _ = Describe("Verify Tekton Pruner Functionality", Serial, Ordered, ContinueOnFailure,
+var _ = Describe("Verify Tekton Pruner Functionality: PIPELINES-36", Serial, Ordered, ContinueOnFailure,
 	Label("e2e", "integration", "operator", "admin", "tekton-pruner", "pruner"), func() {
 
 		// Matches Gauge's spec-level Pre condition — runs once before all TCs.
@@ -37,7 +37,7 @@ var _ = Describe("Verify Tekton Pruner Functionality", Serial, Ordered, Continue
 		})
 
 		// PIPELINES-36-TC-01
-		Describe("Enable Tekton Pruner & Validate Deployment Status", Label("sanity"), func() {
+		Describe("Enable Tekton Pruner & Validate Deployment Status: PIPELINES-36-TC01", Label("sanity"), func() {
 			It("should enable tekton-pruner and validate controller and webhook deployments", func() {
 				oc.DisableLegacyPruner()
 				oc.EnableTektonPruner()
@@ -48,7 +48,7 @@ var _ = Describe("Verify Tekton Pruner Functionality", Serial, Ordered, Continue
 		})
 
 		// PIPELINES-36-TC-02
-		Describe("Webhook: Negative Values & Invalid Type", func() {
+		Describe("Webhook: Negative Values & Invalid Type: PIPELINES-36-TC02", func() {
 			It("should reject invalid tekton-pruner global-config values via webhook", func() {
 				oc.SetTektonPrunerGlobalConfig("ttlSecondsAfterFinished", "-1",
 					"ttlSecondsAfterFinished cannot be negative")
@@ -60,7 +60,7 @@ var _ = Describe("Verify Tekton Pruner Functionality", Serial, Ordered, Continue
 		})
 
 		// PIPELINES-36-TC-03
-		Describe("Global TTL Expiry for PipelineRuns", Label("sanity"), func() {
+		Describe("Global TTL Expiry for PipelineRuns: PIPELINES-36-TC03", Label("sanity"), func() {
 			It("should prune all pipelineruns after ttlSecondsAfterFinished expires", func() {
 				ns := store.Namespace()
 				oc.SetTektonPrunerGlobalConfig("enforcedConfigLevel", "global", "")
@@ -75,7 +75,7 @@ var _ = Describe("Verify Tekton Pruner Functionality", Serial, Ordered, Continue
 		})
 
 		// PIPELINES-36-TC-04
-		Describe("Global TTL Expiry for TaskRuns", func() {
+		Describe("Global TTL Expiry for TaskRuns: PIPELINES-36-TC04", func() {
 			It("should prune all taskruns after ttlSecondsAfterFinished expires", func() {
 				ns := store.Namespace()
 				oc.SetTektonPrunerGlobalConfig("enforcedConfigLevel", "global", "")
@@ -90,7 +90,7 @@ var _ = Describe("Verify Tekton Pruner Functionality", Serial, Ordered, Continue
 		})
 
 		// PIPELINES-36-TC-05
-		Describe("Successful History Limit", Label("sanity"), func() {
+		Describe("Successful History Limit: PIPELINES-36-TC05", Label("sanity"), func() {
 			It("should keep only the N most recent successful pipelineruns", func() {
 				ns := store.Namespace()
 				oc.SetTektonPrunerGlobalConfig("enforcedConfigLevel", "global", "")
@@ -103,7 +103,7 @@ var _ = Describe("Verify Tekton Pruner Functionality", Serial, Ordered, Continue
 		})
 
 		// PIPELINES-36-TC-06
-		Describe("Failed History Limit", func() {
+		Describe("Failed History Limit: PIPELINES-36-TC06", func() {
 			It("should keep only the N most recent failed pipelineruns", func() {
 				ns := store.Namespace()
 				oc.SetTektonPrunerGlobalConfig("enforcedConfigLevel", "global", "")
@@ -116,7 +116,7 @@ var _ = Describe("Verify Tekton Pruner Functionality", Serial, Ordered, Continue
 		})
 
 		// PIPELINES-36-TC-07
-		Describe("Mixed History Limits", Label("sanity"), func() {
+		Describe("Mixed History Limits: PIPELINES-36-TC07", Label("sanity"), func() {
 			It("should enforce successfulHistoryLimit and failedHistoryLimit simultaneously", func() {
 				ns := store.Namespace()
 				oc.SetTektonPrunerGlobalConfig("successfulHistoryLimit", "5", "")
@@ -135,7 +135,7 @@ var _ = Describe("Verify Tekton Pruner Functionality", Serial, Ordered, Continue
 		})
 
 		// PIPELINES-36-TC-08
-		Describe("Namespace Config Override Error", func() {
+		Describe("Namespace Config Override Error: PIPELINES-36-TC08", func() {
 			It("should reject a namespace TTL that exceeds the global TTL limit", func() {
 				oc.SetTektonPrunerGlobalConfig("ttlSecondsAfterFinished", "60", "")
 				oc.SetTektonPrunerGlobalConfig("namespaces.dev.ttlSecondsAfterFinished", "300",
@@ -144,7 +144,7 @@ var _ = Describe("Verify Tekton Pruner Functionality", Serial, Ordered, Continue
 		})
 
 		// PIPELINES-36-TC-09
-		Describe("Label Selector Match & Mismatch", Label("sanity"), func() {
+		Describe("Label Selector Match & Mismatch: PIPELINES-36-TC09", Label("sanity"), func() {
 			It("should prune label-matching pipelineruns and retain non-matching ones", func() {
 				ns := store.Namespace()
 				oc.SetTektonPrunerGlobalConfig("enforcedConfigLevel", "namespace", "")
@@ -166,7 +166,7 @@ var _ = Describe("Verify Tekton Pruner Functionality", Serial, Ordered, Continue
 		})
 
 		// PIPELINES-36-TC-10
-		Describe("Annotation Selector", Label("sanity"), func() {
+		Describe("Annotation Selector: PIPELINES-36-TC10", Label("sanity"), func() {
 			It("should prune pipelineruns that match the annotation selector", func() {
 				ns := store.Namespace()
 				oc.SetTektonPrunerGlobalConfig("enforcedConfigLevel", "namespace", "")
@@ -182,7 +182,7 @@ var _ = Describe("Verify Tekton Pruner Functionality", Serial, Ordered, Continue
 		})
 
 		// PIPELINES-36-TC-11
-		Describe("AND Logic (Label + Annotation)", func() {
+		Describe("AND Logic (Label + Annotation): PIPELINES-36-TC11", func() {
 			It("should prune pipelineruns matching both label AND annotation selectors", func() {
 				ns := store.Namespace()
 				oc.SetTektonPrunerGlobalConfig("enforcedConfigLevel", "namespace", "")

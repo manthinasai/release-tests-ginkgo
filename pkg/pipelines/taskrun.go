@@ -1,23 +1,27 @@
 package pipelines
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"regexp"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:revive,staticcheck // dot import is idiomatic for Ginkgo
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	w "k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/clients"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/cmd"
+	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/config"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/k8s"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/wait"
 )
 
 // ValidateTaskRun validates a TaskRun by matching name pattern and checking status.
 func ValidateTaskRun(c *clients.Clients, trname, status, namespace string) {
-	matchedTrname := getTaskRunNameMatches(c, trname, namespace)
+	matchedTrname := getTaskRunNameMatches(c, trname)
 	if matchedTrname == "" {
 		Fail(fmt.Sprintf("Error: Nothing matched with Taskrun name: %s in namespace %s", trname, namespace))
 	}
@@ -70,20 +74,23 @@ func validateTaskRunTimeOutFailure(c *clients.Clients, trname, namespace string)
 	}
 }
 
-func getTaskRunNameMatches(c *clients.Clients, trname, namespace string) string {
-	trlist, err := c.TaskRunClient.List(c.Ctx, metav1.ListOptions{})
-	if err != nil {
-		Fail(fmt.Sprintf("failed to list task runs in namespace %s \n %v", namespace, err))
-	}
-
+func getTaskRunNameMatches(c *clients.Clients, trname string) string {
 	var matchedTr string
 	match, _ := regexp.Compile(trname + ".*?")
-	for _, tr := range trlist.Items {
-		if match.MatchString(tr.Name) {
-			matchedTr = tr.Name
-			break
+	// Poll until a matching TaskRun appears — trigger-based tests create it asynchronously.
+	_ = w.PollUntilContextTimeout(c.Ctx, config.APIRetry, 2*time.Minute, false, func(context.Context) (bool, error) {
+		trlist, listErr := c.TaskRunClient.List(c.Ctx, metav1.ListOptions{})
+		if listErr != nil {
+			return false, nil
 		}
-	}
+		for _, tr := range trlist.Items {
+			if match.MatchString(tr.Name) {
+				matchedTr = tr.Name
+				return true, nil
+			}
+		}
+		return false, nil
+	})
 	return matchedTr
 }
 

@@ -164,6 +164,7 @@ func ValidateS2IPipelineForAllTags(
 
 		// Launch pipeline in goroutine to run concurrently
 		go func(tag string, params map[string]string) {
+			defer GinkgoRecover()
 			defer wg.Done()
 			customRunName := pipelineName + "-run-" + tag
 			prName := opc.StartPipeline(pipelineName, params, workspaces, namespace,

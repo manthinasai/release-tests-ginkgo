@@ -1,6 +1,3 @@
-# Reference repos (cloned for migration comparison)
-reference-repo/
-
 # Go module vendor tree
 vendor/
 
@@ -18,8 +15,11 @@ tests/chains/sign
 # Temporary cosign public key used for testing
 testdata/chains/key/
 
-# Temporary TLS certificates used for testing
+# Temporary TLS certificates generated during triggers TLS tests
+testdata/triggers/certs/ca.crt
+testdata/triggers/certs/ca.key
 testdata/triggers/certs/ca.srl
 testdata/triggers/certs/server.crt
 testdata/triggers/certs/server.csr
 testdata/triggers/certs/server.ext
+testdata/triggers/certs/server.key
