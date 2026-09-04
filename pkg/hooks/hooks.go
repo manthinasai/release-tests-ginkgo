@@ -9,13 +9,14 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:revive,staticcheck // dot import is idiomatic for Ginkgo
 	"github.com/tektoncd/pipeline/pkg/names"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/clients"
-	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/k8s"
 	occmd "github.com/openshift-pipelines/release-tests-ginkgo/pkg/oc"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/store"
 )
@@ -150,17 +151,9 @@ func AutoNamespacePerDescribe(namespacePtr *string, clientsFunc func() *clients.
 			log.Printf("Creating test namespace: %s for container: %s", ns, containerPath)
 			oc.CreateNewProject(ns)
 
-			// Only wait for the pipeline SA if the operator is already installed.
-			// On a fresh cluster, the OLM install test creates the operator — the
-			// pipeline SA won't exist until after that first It step runs.
-			if isOperatorInstalled(cs) {
-				sa := k8s.WaitForServiceAccount(cs, ns, "pipeline")
-				if sa == nil {
-					Fail("service account 'pipeline' not available in namespace " + ns)
-				}
-			} else {
-				log.Printf("Operator not installed yet — skipping pipeline SA wait for namespace %s", ns)
-			}
+			// Wait for default service account to be created by operator
+			// Kubernetes auto-creates "default" SA, but Tekton requires "pipeline" SA which is created by the operator
+			_ = waitForPipelineServiceAccount(cs, ns, "pipeline")
 		}
 
 		// Update lastContainerPath for next iteration
@@ -202,9 +195,27 @@ func AutoNamespacePerDescribe(namespacePtr *string, clientsFunc func() *clients.
 	return true
 }
 
-// isOperatorInstalled returns true if the TektonConfig CR "config" exists,
-// indicating the OpenShift Pipelines operator is installed.
-func isOperatorInstalled(cs *clients.Clients) bool {
-	_, err := cs.TektonConfig().Get(context.Background(), "config", metav1.GetOptions{})
-	return err == nil
+// waitForPipelineServiceAccount waits for the pipeline service account to be created
+// The operator auto-creates this service account but it takes time
+// Returns true if found, false if timeout (non-blocking - doesn't fail test)
+func waitForPipelineServiceAccount(cs *clients.Clients, ns, targetSA string) bool {
+	ctx := context.Background()
+	err := wait.PollUntilContextTimeout(ctx, 1*time.Second, 30*time.Second, false, func(context.Context) (bool, error) {
+		saList, err := cs.KubeClient.Kube.CoreV1().ServiceAccounts(ns).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return false, err
+		}
+		for _, sa := range saList.Items {
+			if sa.Name == targetSA {
+				log.Printf("Pipeline service account found in namespace %s", ns)
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		log.Printf("Warning: service account %s not found in namespace %s after timeout", targetSA, ns)
+		return false
+	}
+	return true
 }

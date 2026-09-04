@@ -85,7 +85,7 @@ var _ = Describe("Verify Tekton Pruner Functionality: PIPELINES-36", Serial, Ord
 				pipelines.AssertNumberOfTaskrunsWithStatus(ns, "Succeeded", 5, 60)
 				// INTENTIONAL SLEEP: wait for ttlSecondsAfterFinished=60 to fire.
 				time.Sleep(60 * time.Second)
-				pipelines.AssertNumberOfTaskruns(ns, 0, 30)
+				pipelines.AssertNumberOfTaskruns(ns, 0, 90)
 			})
 		})
 

@@ -92,12 +92,23 @@ func AssertComponentVersion(version string, component string) {
 	}
 }
 
-// DownloadCLIFromCluster downloads the tkn CLI binary from the cluster's console download URL.
+// DownloadCLIFromCluster downloads the tkn CLI binary from the cluster's console download URL,
+// or skips download if TKN_DOWNLOAD_URL env var is set (used by infra scripts with pre-cached binaries).
 func DownloadCLIFromCluster() {
-	var architecture = strings.Trim(cmd.MustSucceed("uname").Stdout(), "\n") + " " + strings.Trim(cmd.MustSucceed("uname", "-m").Stdout(), "\n")
-	var cliDownloadURL = cmd.MustSucceed("oc", "get", "consoleclidownloads", "tkn", "-o", "jsonpath={.spec.links[?(@.text==\"Download tkn and tkn-pac for "+architecture+"\")].href}").Stdout()
-	cmd.MustSucceedIncreasedTimeout(time.Minute*10, "curl", "-o", "/tmp/tkn-binary.tar.gz", "-k", cliDownloadURL)
-	cmd.MustSucceed("tar", "-xf", "/tmp/tkn-binary.tar.gz", "-C", "/tmp")
+	// Check if binaries are already in /tmp (infra pre-caches them)
+	if _, err := os.Stat("/tmp/tkn"); err == nil {
+		log.Printf("tkn binary already exists in /tmp, skipping download")
+		return
+	}
+
+	downloadURL := os.Getenv("TKN_DOWNLOAD_URL")
+	if downloadURL == "" {
+		var architecture = strings.Trim(cmd.MustSucceed("uname").Stdout(), "\n") + " " + strings.Trim(cmd.MustSucceed("uname", "-m").Stdout(), "\n")
+		downloadURL = cmd.MustSucceed("oc", "get", "consoleclidownloads", "tkn", "-o", "jsonpath={.spec.links[?(@.text==\"Download tkn and tkn-pac for "+architecture+"\")].href}").Stdout()
+	}
+
+	cmd.MustSucceedIncreasedTimeout(time.Minute*10, "curl", "-o", "/tmp/tkn-binary.tar.gz", "-k", downloadURL)
+	cmd.MustSucceed("tar", "-xf", "/tmp/tkn-binary.tar.gz", "-C", "/tmp", "--no-same-permissions", "--no-same-owner")
 }
 
 // AssertClientVersion verifies that the client-side version of the given binary matches the expected version.

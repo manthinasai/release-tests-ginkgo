@@ -10,9 +10,12 @@ import (
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/clients"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/config"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/hooks"
+	occmd "github.com/openshift-pipelines/release-tests-ginkgo/pkg/oc"
 )
 
 var sharedClients *clients.Clients
+
+var oc = occmd.OC{}
 
 // lastNamespace tracks the current test namespace for diagnostic collection.
 // Set in BeforeEach by test specs; read in ReportAfterEach by diagnostics collector.

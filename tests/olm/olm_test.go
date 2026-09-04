@@ -50,10 +50,6 @@ var _ = Describe("OLM Operator Lifecycle: PIPELINES-09", Serial, Label("olm", "a
 			operator.VerifyNamespaceExists("openshift-pipelines")
 		})
 
-		It("applies TektonHub resource", func() {
-			oc.Apply("testdata/hub/tektonhub.yaml", "")
-		})
-
 		It("configures GitHub token for git resolver in TektonConfig", func() {
 			operator.ConfigureGitResolverToken(sharedClients)
 		})
@@ -80,10 +76,6 @@ var _ = Describe("OLM Operator Lifecycle: PIPELINES-09", Serial, Label("olm", "a
 
 		It("enables generateSigningSecret for Tekton Chains", func() {
 			operator.EnableChainsSigningSecret(sharedClients)
-		})
-
-		It("validates hub deployment", func() {
-			operator.ValidateHubDeployment(sharedClients)
 		})
 
 		It("enables statefulset for chains", func() {

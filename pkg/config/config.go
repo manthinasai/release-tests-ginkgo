@@ -167,7 +167,7 @@ const (
 )
 
 // TektonInstallersetNamePrefixes lists the name prefixes of all TektonInstallerSet resources.
-var TektonInstallersetNamePrefixes = [34]string{
+var TektonInstallersetNamePrefixes = [29]string{
 	"addon-custom-consolecli",
 	"addon-custom-openshiftconsole",
 	"addon-custom-pipelinestemplate",
@@ -179,7 +179,6 @@ var TektonInstallersetNamePrefixes = [34]string{
 	"chain",
 	"chain-config",
 	"chain-secret",
-	"console-link-hub",
 	"manualapprovalgate-main-deployment",
 	"manualapprovalgate-main-static",
 	"openshiftpipelinesascode-main-deployment",
@@ -194,10 +193,6 @@ var TektonInstallersetNamePrefixes = [34]string{
 	"result-pre",
 	"rhosp-rbac",
 	"tekton-config-console-plugin-manifests",
-	"tekton-hub-api",
-	"tekton-hub-db",
-	"tekton-hub-db-migration",
-	"tekton-hub-ui",
 	"tektoncd-pruner",
 	"trigger-main-deployment",
 	"trigger-main-static",

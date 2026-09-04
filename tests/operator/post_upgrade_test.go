@@ -31,85 +31,105 @@ var _ = Describe("Olm Openshift Pipelines operator post upgrade tests: PIPELINES
 			})
 		})
 
-		It("Verify environment after upgrade: PIPELINES-19-TC01", func() {
-			ns := "releasetest-upgrade-triggers"
-			lastNamespace = ns
-			sharedClients.NewClientSet(ns)
-			cmd.MustSucceed("oc", "project", ns)
+		// PIPELINES-19-TC01
+		Describe("Verify environment after upgrade: PIPELINES-19-TC01", func() {
+			It("should verify triggers, eventlisteners, and pipelines still work after upgrade", func() {
+				ns := "releasetest-upgrade-triggers"
+				lastNamespace = ns
+				sharedClients.NewClientSet(ns)
+				cmd.MustSucceed("oc", "project", ns)
 
-			// GitHub push event
-			route1 := triggers.GetRoute("listener-ctb-github-push", ns)
-			resp1, payload1 := triggers.MockPostEvent(route1, "github", "push",
-				"testdata/triggers/github-ctb/push.json", false)
-			store.PutScenarioData("payload", string(payload1))
-			triggers.AssertElResponse(sharedClients, resp1, "listener-ctb-github-push", ns)
-			pipelines.ValidatePipelineRun(sharedClients, "pipelinerun-git-push-ctb", "successful", ns)
+				// GitHub push event
+				route1 := triggers.GetRoute("listener-ctb-github-push", ns)
+				resp1, payload1 := triggers.MockPostEvent(route1, "github", "push",
+					"testdata/triggers/github-ctb/push.json", false)
+				store.PutScenarioData("payload", string(payload1))
+				triggers.AssertElResponse(sharedClients, resp1, "listener-ctb-github-push", ns)
+				pipelines.ValidatePipelineRun(sharedClients, "pipelinerun-git-push-ctb", "successful", ns)
 
-			// GitHub PR event via triggersCRD
-			route2 := triggers.GetRoute("listener-triggerref", ns)
-			resp2, payload2 := triggers.MockPostEvent(route2, "github", "pull_request",
-				"testdata/triggers/triggersCRD/pull-request.json", false)
-			store.PutScenarioData("payload", string(payload2))
-			triggers.AssertElResponse(sharedClients, resp2, "listener-triggerref", ns)
-			pipelines.ValidatePipelineRun(sharedClients, "parallel-pipelinerun", "successful", ns)
+				// GitHub PR event via triggersCRD
+				route2 := triggers.GetRoute("listener-triggerref", ns)
+				resp2, payload2 := triggers.MockPostEvent(route2, "github", "pull_request",
+					"testdata/triggers/triggersCRD/pull-request.json", false)
+				store.PutScenarioData("payload", string(payload2))
+				triggers.AssertElResponse(sharedClients, resp2, "listener-triggerref", ns)
+				pipelines.ValidatePipelineRun(sharedClients, "parallel-pipelinerun", "successful", ns)
 
-			// Bitbucket event
-			route3 := triggers.GetRoute("bitbucket-listener", ns)
-			resp3, payload3 := triggers.MockPostEvent(route3, "bitbucket", "refs_changed",
-				"testdata/triggers/bitbucket/refs-change-event.json", false)
-			store.PutScenarioData("payload", string(payload3))
-			triggers.AssertElResponse(sharedClients, resp3, "bitbucket-listener", ns)
-			pipelines.ValidateTaskRun(sharedClients, "bitbucket-run", "Failure", ns)
+				// Bitbucket event
+				route3 := triggers.GetRoute("bitbucket-listener", ns)
+				resp3, payload3 := triggers.MockPostEvent(route3, "bitbucket", "refs_changed",
+					"testdata/triggers/bitbucket/refs-change-event.json", false)
+				store.PutScenarioData("payload", string(payload3))
+				triggers.AssertElResponse(sharedClients, resp3, "bitbucket-listener", ns)
+				pipelines.ValidateTaskRun(sharedClients, "bitbucket-run", "Failure", ns)
+			})
 		})
 
-		It("Verify Event listener with TLS after upgrade: PIPELINES-19-TC03", Label("e2e", "sanity", "tls", "triggers"), func() {
-			ns := "releasetest-upgrade-tls"
-			lastNamespace = ns
-			sharedClients.NewClientSet(ns)
-			cmd.MustSucceed("oc", "project", ns)
+		// PIPELINES-19-TC03
+		Describe("Verify Event listener with TLS after upgrade: PIPELINES-19-TC03", Label("e2e", "sanity", "tls", "triggers"), func() {
+			It("should verify TLS eventlistener still works after upgrade", func() {
+				ns := "releasetest-upgrade-tls"
+				lastNamespace = ns
+				sharedClients.NewClientSet(ns)
+				cmd.MustSucceed("oc", "project", ns)
 
-			route := triggers.GetRoute("listener-embed-binding", ns)
-			resp, payload := triggers.MockPostEvent(route, "github", "push",
-				"testdata/push.json", true)
-			store.PutScenarioData("payload", string(payload))
-			triggers.AssertElResponse(sharedClients, resp, "listener-embed-binding", ns)
-			pipelines.ValidatePipelineRun(sharedClients, "simple-pipeline-run", "successful", ns)
+				route := triggers.GetRoute("listener-embed-binding", ns)
+				resp, payload := triggers.MockPostEvent(route, "github", "push",
+					"testdata/push.json", true)
+				store.PutScenarioData("payload", string(payload))
+				triggers.AssertElResponse(sharedClients, resp, "listener-embed-binding", ns)
+				pipelines.ValidatePipelineRun(sharedClients, "simple-pipeline-run", "successful", ns)
+			})
 		})
 
-		It("Verify secret is linked to SA even after upgrade: PIPELINES-19-TC04", Label("e2e", "sanity", "non-admin", "clustertasks", "git-clone"), func() {
-			ns := "releasetest-upgrade-pipelines"
-			lastNamespace = ns
-			sharedClients.NewClientSet(ns)
-			cmd.MustSucceed("oc", "project", ns)
+		// PIPELINES-19-TC04
+		Describe("Verify secret is linked to SA even after upgrade: PIPELINES-19-TC04", Label("e2e", "sanity", "non-admin", "clustertasks", "git-clone"), func() {
+			It("should verify git-clone private pipeline still works after upgrade", func() {
+				ns := "releasetest-upgrade-pipelines"
+				lastNamespace = ns
+				sharedClients.NewClientSet(ns)
+				cmd.MustSucceed("oc", "project", ns)
 
-			operator.AssertServiceAccountPresent(sharedClients, ns, "pipeline")
+				operator.AssertServiceAccountPresent(sharedClients, ns, "pipeline")
 
-			oc.Create("testdata/ecosystem/pipelineruns/git-clone-read-private.yaml", ns)
-			pipelines.ValidatePipelineRun(sharedClients, "git-clone-read-private-pipeline-run", "successful", ns)
+				oc.Create("testdata/ecosystem/pipelineruns/git-clone-read-private.yaml", ns)
+				pipelines.ValidatePipelineRun(sharedClients, "git-clone-read-private-pipeline-run", "successful", ns)
+			})
 		})
 
-		It("Verify S2I golang pipeline after upgrade: PIPELINES-19-TC05", Label("e2e", "non-admin", "clustertasks", "s2i"), func() {
-			ns := "releasetest-upgrade-s2i"
-			lastNamespace = ns
-			sharedClients.NewClientSet(ns)
-			cmd.MustSucceed("oc", "project", ns)
+		// PIPELINES-19-TC05
+		Describe("Verify S2I golang pipeline after upgrade: PIPELINES-19-TC05", Label("e2e", "non-admin", "clustertasks", "s2i"), func() {
+			It("should run s2i golang pipeline for all imagestream tags after upgrade", func() {
+				ns := "releasetest-upgrade-s2i"
+				lastNamespace = ns
+				sharedClients.NewClientSet(ns)
+				cmd.MustSucceed("oc", "project", ns)
 
-			tags := openshift.GetImageStreamTags(sharedClients, "openshift", "golang")
-			Expect(tags).NotTo(BeEmpty(), "golang imagestream tags should not be empty")
+				tags := openshift.GetImageStreamTags(sharedClients, "openshift", "golang")
+				Expect(tags).NotTo(BeEmpty(), "golang imagestream tags should not be empty")
 
-			for _, tag := range tags {
-				if tag == "latest" {
-					continue
+				for _, tag := range tags {
+					if tag == "latest" {
+						continue
+					}
+					log.Printf("Starting s2i pipeline with VERSION=%s", tag)
+					pipelineRunName := opc.StartPipeline(
+						"s2i-go-pipeline",
+						map[string]string{"VERSION": tag},
+						map[string]string{"name=source": "claimName=shared-pvc"},
+						ns,
+						"--use-param-defaults", "--prefix-name", "s2i-go-pipeline-run-"+tag,
+					)
+					pipelines.ValidatePipelineRun(sharedClients, pipelineRunName, "successful", ns)
 				}
-				log.Printf("Starting s2i pipeline with VERSION=%s", tag)
-				pipelineRunName := opc.StartPipeline(
-					"s2i-go-pipeline",
-					map[string]string{"VERSION": tag},
-					map[string]string{"name=source": "claimName=shared-pvc"},
-					ns,
-					"--use-param-defaults", "--prefix-name", "s2i-go-pipeline-run-"+tag,
-				)
-				pipelines.ValidatePipelineRun(sharedClients, pipelineRunName, "successful", ns)
-			}
+			})
+		})
+
+		// PIPELINES-19-TC06
+		Describe("Validate olm skiprange post upgrade: PIPELINES-19-TC06", Label("post-upgrade", "olm"), func() {
+			It("should fetch post-upgrade OLM skipRange and validate diff against pre-upgrade", func() {
+				oc.GetOlmSkipRange("post-upgrade", "post-upgrade-olm-skip-range", "testdata/olm/skiprange.json")
+				oc.ValidateOlmSkipRangeDiff("testdata/olm/skiprange.json", "pre-upgrade-olm-skip-range", "post-upgrade-olm-skip-range")
+			})
 		})
 	})

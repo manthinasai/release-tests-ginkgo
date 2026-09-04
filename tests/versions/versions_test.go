@@ -27,7 +27,6 @@ var _ = Describe("Versions of OpenShift Pipelines: PIPELINES-22", Label("version
 			Entry("operator version", "operator", "OPERATOR_VERSION"),
 			Entry("chains version", "chains", "CHAINS_VERSION"),
 			Entry("pac version", "pac", "PAC_VERSION"),
-			Entry("hub version", "hub", "HUB_VERSION"),
 			Entry("results version", "results", "RESULTS_VERSION"),
 			Entry("manual-approval-gate version", "manual-approval-gate", "MANUAL_APPROVAL_VERSION"),
 			Entry("OSP version", "OSP", "OSP_VERSION"),
@@ -58,6 +57,16 @@ var _ = Describe("Versions of OpenShift Pipelines: PIPELINES-22", Label("version
 		It("checks opc server version", func() {
 			By("Checking opc server version")
 			opc.AssertServerVersion("opc")
+		})
+	})
+
+	Describe("Check OSP Version in OlmSkipRange: PIPELINES-22-TC03", Label("sanity", "olm"), Ordered, ContinueOnFailure, func() {
+		It("validates OSP version is present in OLM skipRange", func() {
+			oc.ValidateOlmSkipRange()
+		})
+
+		It("validates all channels have valid skipRange bounds", func() {
+			oc.ValidateChannelSkipRangeBounds()
 		})
 	})
 })
