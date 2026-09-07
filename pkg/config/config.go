@@ -67,6 +67,8 @@ const (
 	// MAGWebHook is the name of the manual approval gate webhook deployment.
 	MAGWebHook = "manual-approval-gate-webhook"
 
+	// PrunerControllerName is the name of the TektonPruner controller deployment.
+	PrunerControllerName = "tekton-pruner-controller"
 	// PrunerSchedule is the default cron schedule for the auto pruner.
 	PrunerSchedule = "0 8 * * *"
 	// PrunerNamePrefix is the prefix used for pruner job names.
@@ -414,7 +416,7 @@ func Read(path string) ([]byte, error) {
 func TempDir() (string, error) {
 	tmp := filepath.Join(Dir(), "..", "tmp")
 	if _, err := os.Stat(tmp); os.IsNotExist(err) {
-		err := os.Mkdir(tmp, 0750)
+		err := os.Mkdir(tmp, 0o750) //nolint:mnd // standard directory permission
 		return tmp, err
 	}
 	return tmp, nil

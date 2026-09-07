@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2" //nolint:revive,staticcheck // dot import is idiomatic for Ginkgo
 	. "github.com/onsi/gomega"    //nolint:revive,staticcheck // dot import is idiomatic for Gomega
@@ -12,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/clients"
+	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/cmd"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/config"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -99,6 +101,14 @@ func verifyNoTektonConfigCR(cs *clients.Clients) {
 	Expect(configs.Items).To(BeEmpty(), "expected no TektonConfig CRs to exist")
 }
 
+// GetTektonConfigField returns a jsonpath field value from the TektonConfig CR.
+func GetTektonConfigField(jsonpath string) string {
+	result := cmd.Run("oc", "get", "TektonConfig", "config", "-o", "jsonpath="+jsonpath)
+	return strings.TrimSpace(result.Stdout())
+}
+
 // Ensure the unused import warning doesn't fire.
-var _ = GinkgoWriter
-var _ = errors.New
+var (
+	_ = GinkgoWriter
+	_ = errors.New
+)
