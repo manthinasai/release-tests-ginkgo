@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -92,23 +93,28 @@ func AssertComponentVersion(version string, component string) {
 	}
 }
 
-// DownloadCLIFromCluster downloads the tkn CLI binary from the cluster's console download URL,
-// or skips download if TKN_DOWNLOAD_URL env var is set (used by infra scripts with pre-cached binaries).
+// DownloadCLIFromCluster ensures the tkn/tkn-pac/opc CLIs are available on PATH.
+// If CI infra already provides them on PATH, the download is skipped. Otherwise
+// the tkn tarball (which bundles tkn, tkn-pac and opc) is fetched from the
+// cluster's console download URL, extracted to /tmp, and /tmp is prepended to
+// PATH so the binaries can be invoked by bare name.
 func DownloadCLIFromCluster() {
-	// Check if binaries are already in /tmp (infra pre-caches them)
-	if _, err := os.Stat("/tmp/tkn"); err == nil {
-		log.Printf("tkn binary already exists in /tmp, skipping download")
+	// Infra pre-installs the CLIs on PATH; skip the redundant download.
+	if _, err := exec.LookPath("opc"); err == nil {
+		log.Printf("opc found on PATH, skipping CLI download from cluster")
 		return
 	}
 
-	downloadURL := os.Getenv("TKN_DOWNLOAD_URL")
-	if downloadURL == "" {
-		var architecture = strings.Trim(cmd.MustSucceed("uname").Stdout(), "\n") + " " + strings.Trim(cmd.MustSucceed("uname", "-m").Stdout(), "\n")
-		downloadURL = cmd.MustSucceed("oc", "get", "consoleclidownloads", "tkn", "-o", "jsonpath={.spec.links[?(@.text==\"Download tkn and tkn-pac for "+architecture+"\")].href}").Stdout()
+	var architecture = strings.Trim(cmd.MustSucceed("uname").Stdout(), "\n") + " " + strings.Trim(cmd.MustSucceed("uname", "-m").Stdout(), "\n")
+	var cliDownloadURL = cmd.MustSucceed("oc", "get", "consoleclidownloads", "tkn", "-o", "jsonpath={.spec.links[?(@.text==\"Download tkn and tkn-pac for "+architecture+"\")].href}").Stdout()
+	cmd.MustSucceedIncreasedTimeout(time.Minute*10, "curl", "-o", "/tmp/tkn-binary.tar.gz", "-k", cliDownloadURL)
+	// --strip-components=1 drops the archive's leading "./" entry so tar does not
+	// try to chmod the sticky /tmp dir (which fails in restrictive environments).
+	cmd.MustSucceed("tar", "-xf", "/tmp/tkn-binary.tar.gz", "-C", "/tmp", "--strip-components=1")
+	// Prepend /tmp to PATH so the extracted binaries resolve by bare name.
+	if err := os.Setenv("PATH", "/tmp:"+os.Getenv("PATH")); err != nil {
+		Fail(fmt.Sprintf("failed to prepend /tmp to PATH: %v", err))
 	}
-
-	cmd.MustSucceedIncreasedTimeout(time.Minute*10, "curl", "-o", "/tmp/tkn-binary.tar.gz", "-k", downloadURL)
-	cmd.MustSucceed("tar", "-xf", "/tmp/tkn-binary.tar.gz", "-C", "/tmp", "--no-same-permissions", "--no-same-owner")
 }
 
 // AssertClientVersion verifies that the client-side version of the given binary matches the expected version.
@@ -117,7 +123,7 @@ func AssertClientVersion(binary string) {
 
 	switch binary {
 	case "tkn-pac":
-		commandResult = cmd.MustSucceed("/tmp/tkn-pac", "version").Stdout()
+		commandResult = cmd.MustSucceed("tkn-pac", "version").Stdout()
 		expectedVersion := os.Getenv("PAC_VERSION")
 		if !strings.Contains(commandResult, expectedVersion) {
 			Fail(fmt.Sprintf("tkn-pac has an unexpected version: %s. Expected: %s", commandResult, expectedVersion))
@@ -125,7 +131,7 @@ func AssertClientVersion(binary string) {
 
 	case "tkn":
 		expectedVersion := os.Getenv("TKN_CLIENT_VERSION")
-		commandResult = cmd.MustSucceed("/tmp/tkn", "version").Stdout()
+		commandResult = cmd.MustSucceed("tkn", "version").Stdout()
 		var splittedCommandResult = strings.Split(commandResult, "\n")
 		for i := range splittedCommandResult {
 			if strings.Contains(splittedCommandResult[i], "Client") {
@@ -137,7 +143,7 @@ func AssertClientVersion(binary string) {
 		}
 
 	case "opc":
-		commandResult = cmd.MustSucceed("/tmp/opc", "version").Stdout()
+		commandResult = cmd.MustSucceed("opc", "version").Stdout()
 		components := [3]string{"OpenShift Pipelines Client", "Tekton CLI", "Pipelines as Code CLI"}
 		expectedVersions := [3]string{os.Getenv("OSP_VERSION"), os.Getenv("TKN_CLIENT_VERSION"), os.Getenv("PAC_VERSION")}
 		splittedCommandResult := strings.Split(commandResult, "\n")
@@ -161,7 +167,7 @@ func AssertServerVersion(binary string) {
 
 	switch binary {
 	case "opc":
-		commandResult = cmd.MustSucceed("/tmp/opc", "version", "--server").Stdout()
+		commandResult = cmd.MustSucceed("opc", "version", "--server").Stdout()
 		components := [4]string{"Chains version", "Pipeline version", "Triggers version", "Operator version"}
 		expectedVersions := [4]string{os.Getenv("CHAINS_VERSION"), os.Getenv("PIPELINE_VERSION"), os.Getenv("TRIGGERS_VERSION"), os.Getenv("OPERATOR_VERSION")}
 		splittedCommandResult := strings.Split(commandResult, "\n")
