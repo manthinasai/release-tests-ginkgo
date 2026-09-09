@@ -2,11 +2,10 @@ package operator
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,11 +38,45 @@ func CreateResultsRoute() {
 	cmd.Run("oc", "create", "route", "-n", "openshift-pipelines", "passthrough", "tekton-results-api-service", "--service=tekton-results-api-service", "--port=8080")
 }
 
-// GetResultsAPI returns the Tekton Results API endpoint URL from the route.
+// GetResultsAPI returns the Tekton Results API endpoint as an https:// URL, the
+// form expected by "opc results config set --host".
 func GetResultsAPI() string {
-	var resultsAPI = cmd.MustSucceed("oc", "get", "route", "tekton-results-api-service", "-n", "openshift-pipelines", "--no-headers", "-o", "custom-columns=:spec.host").Stdout() + ":443"
-	resultsAPI = strings.ReplaceAll(resultsAPI, "\n", "")
-	return resultsAPI
+	host := cmd.MustSucceed("oc", "get", "route", "tekton-results-api-service", "-n", "openshift-pipelines", "--no-headers", "-o", "custom-columns=:spec.host").Stdout()
+	return "https://" + strings.TrimSpace(host)
+}
+
+// configureResultsCLIOnce guards the kubeconfig write performed by
+// "opc results config set" so it happens at most once per test process.
+var configureResultsCLIOnce sync.Once
+
+// ConfigureResultsCLI points the Results CLI at the cluster's Results API route.
+// The connection settings are stored in the kubeconfig rather than passed per
+// invocation, which is why this replaces the removed --addr and --insecure flags.
+func ConfigureResultsCLI() {
+	configureResultsCLIOnce.Do(func() {
+		args := []string{"opc", "results", "config", "set",
+			"--host=" + GetResultsAPI(),
+			"--insecure-skip-tls-verify",
+		}
+		// Token-authenticated users need an explicit bearer token. Certificate-based
+		// logins (for example system:admin) have none and authenticate via the
+		// kubeconfig, so only pass --token when one is actually available.
+		if token := strings.TrimSpace(cmd.Run("oc", "whoami", "-t").Stdout()); token != "" {
+			args = append(args, "--token="+token)
+		}
+		if config.Flags.Kubeconfig != "" {
+			args = append(args, "--kubeconfig="+config.Flags.Kubeconfig)
+		}
+		cmd.MustSucceed(args...)
+	})
+}
+
+// lastRunName returns the name of the most recent run of the given type in ns.
+// The Results commands address runs by name, where the removed ones took the
+// record UUID from the results.tekton.dev/record annotation.
+func lastRunName(resourceType, ns string) string {
+	name := cmd.MustSucceed("tkn", resourceType, "describe", "--last", "-o", "jsonpath={.metadata.name}", "-n", ns).Stdout()
+	return strings.Trim(strings.TrimSpace(name), "'")
 }
 
 // GetResultsAnnotations returns the results name, record UUID, and log URL annotations for the given resource.
@@ -113,11 +146,12 @@ func VerifyResultsAnnotationStored(cs *clients.Clients, resourceType string) err
 
 // VerifyResultsLogs verifies that Results logs are available for the given resource type.
 func VerifyResultsLogs(resourceType string) error {
-	var recordUUID string
-	var resultsAPI string
-	_, recordUUID, _ = GetResultsAnnotations(resourceType)
-	resultsAPI = GetResultsAPI()
+	ns := store.Namespace()
+	if ns == "" {
+		return fmt.Errorf("VerifyResultsLogs: store.Namespace() is empty - ensure hooks are configured")
+	}
 
+	_, recordUUID, _ := GetResultsAnnotations(resourceType)
 	if recordUUID == "" {
 		return fmt.Errorf("annotation results.tekton.dev/record is not set")
 	}
@@ -127,25 +161,14 @@ func VerifyResultsLogs(resourceType string) error {
 	log.Printf("Waiting 10 seconds for Results API to index data\n")
 	time.Sleep(10 * time.Second)
 
-	var resultsJSONData = cmd.MustSucceed("opc", "results", "logs", "get", "--insecure", "--addr", resultsAPI, recordUUID).Stdout()
-	if strings.Contains(resultsJSONData, "record not found") {
+	ConfigureResultsCLI()
+	// Unlike the removed "results logs get", this returns the log text directly
+	// rather than a JSON envelope with base64-encoded data.
+	resultsLogs := cmd.MustSucceed("opc", "results", resourceType, "logs", lastRunName(resourceType, ns), "-n", ns).Stdout()
+	if strings.Contains(resultsLogs, "record not found") {
 		return fmt.Errorf("results log not found")
 	}
-
-	type ResultLogs struct {
-		Name string `json:"name"`
-		Data string `json:"data"`
-	}
-	var resultLogs ResultLogs
-	err := json.Unmarshal([]byte(resultsJSONData), &resultLogs)
-	if err != nil {
-		return fmt.Errorf("error parsing JSON: %w", err)
-	}
-	decodedResultsLogs, err := base64.StdEncoding.Strict().DecodeString(resultLogs.Data)
-	if err != nil {
-		return fmt.Errorf("error decoding base64 data: %w", err)
-	}
-	if !strings.Contains(string(decodedResultsLogs), "Hello, Results!") || !strings.Contains(string(decodedResultsLogs), "Goodbye, Results!") {
+	if !strings.Contains(resultsLogs, "Hello, Results!") || !strings.Contains(resultsLogs, "Goodbye, Results!") {
 		return fmt.Errorf("logs are incorrect: expected 'Hello, Results!' and 'Goodbye, Results!'")
 	}
 	return nil
@@ -153,38 +176,24 @@ func VerifyResultsLogs(resourceType string) error {
 
 // VerifyResultsRecords verifies that the expected result records exist via the Results API.
 func VerifyResultsRecords(resourceType string) error {
-	var recordUUID string
-	var resultsAPI string
-	_, recordUUID, _ = GetResultsAnnotations(resourceType)
-	resultsAPI = GetResultsAPI()
+	ns := store.Namespace()
+	if ns == "" {
+		return fmt.Errorf("VerifyResultsRecords: store.Namespace() is empty - ensure hooks are configured")
+	}
 
 	// Wait for Results API to finish indexing after annotation is set
 	// The annotation=true means data was sent, but API needs time to index it
 	log.Printf("Waiting 10 seconds for Results API to index data\n")
 	time.Sleep(10 * time.Second)
 
-	var resultsRecord = cmd.MustSucceed("opc", "results", "records", "get", "--insecure", "--addr", resultsAPI, recordUUID).Stdout()
+	ConfigureResultsCLI()
+	// Unlike the removed "results records get", this returns the stored run object
+	// itself rather than a record envelope with a base64-encoded value.
+	resultsRecord := cmd.MustSucceed("opc", "results", resourceType, "describe", lastRunName(resourceType, ns), "-n", ns, "-o", "json").Stdout()
 	if strings.Contains(resultsRecord, "record not found") {
 		return fmt.Errorf("results record not found")
 	}
-
-	type ResultRecords struct {
-		Data struct {
-			Type  string `json:"type"`
-			Value string `json:"value"`
-		} `json:"data"`
-	}
-	resultsJSONData := cmd.MustSucceed("opc", "results", "records", "get", "--insecure", "--addr", resultsAPI, recordUUID, "-o", "json").Stdout()
-	var resultRecords ResultRecords
-	err := json.Unmarshal([]byte(resultsJSONData), &resultRecords)
-	if err != nil {
-		return fmt.Errorf("error parsing JSON: %w", err)
-	}
-	decodedResultsLogs, err := base64.StdEncoding.Strict().DecodeString(resultRecords.Data.Value)
-	if err != nil {
-		return fmt.Errorf("error decoding base64 data: %w", err)
-	}
-	if !strings.Contains(string(decodedResultsLogs), "Hello, Results!") || !strings.Contains(string(decodedResultsLogs), "Goodbye, Results!") {
+	if !strings.Contains(resultsRecord, "Hello, Results!") || !strings.Contains(resultsRecord, "Goodbye, Results!") {
 		return fmt.Errorf("records are incorrect: expected 'Hello, Results!' and 'Goodbye, Results!'")
 	}
 	return nil
