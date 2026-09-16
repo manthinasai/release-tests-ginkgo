@@ -222,11 +222,13 @@ LABEL_FILTER='triggers && sanity' ./scripts/run-tests.sh
 | Hub | `hub` | `tests/hub/` |
 | Metrics | `metrics` | `tests/metrics/` |
 | Versions | `versions` | `tests/versions/` |
-| Tekton Kueue bootstrap | `tekton-kueue`, `install`, `admin` | `tests/tektonkueue/` |
+| Tekton Kueue | `tekton-kueue`, `install`, `workload`, `admin` | `tests/tektonkueue/` |
 
-### Running the Tekton Kueue bootstrap suite
+### Running the Tekton Kueue suite
 
-Provide one hub kubeconfig and at least one spoke kubeconfig. Test-binary flags must follow `--`:
+Provide one hub kubeconfig and at least one spoke kubeconfig. Test-binary flags must follow `--`.
+
+Bootstrap the required operators:
 
 ```bash
 ginkgo run --procs=1 --label-filter='tekton-kueue && install' ./tests/tektonkueue -- \
@@ -234,7 +236,18 @@ ginkgo run --procs=1 --label-filter='tekton-kueue && install' ./tests/tektonkueu
   --spoke-kubeconfig /path/to/spoke-1
 ```
 
-Repeat `--spoke-kubeconfig` for additional spokes and optionally provide one matching `--spoke-context` per spoke. The suite installs or reuses the Pipelines, Kueue, and cert-manager operators on every cluster; it validates multi-cluster bootstrap, not workload scheduling.
+Validate multi-cluster PipelineRun execution:
+
+```bash
+ginkgo run --procs=1 --grace-period=25m --label-filter='tekton-kueue && workload' ./tests/tektonkueue -- \
+  --kubeconfig /path/to/hub \
+  --spoke-kubeconfig /path/to/spoke-1 \
+  --spoke-kubeconfig /path/to/spoke-2
+```
+
+Repeat `--spoke-kubeconfig` for additional spokes and optionally provide one matching `--spoke-context` per spoke. The workload test makes every configured spoke eligible, creates a PipelineRun on the hub, verifies execution on exactly one spoke, and verifies that terminal status returns to the hub.
+
+The workload test temporarily configures and restores `TektonConfig.spec.scheduler`, Kueue, scoped worker credentials, RBAC, queues, and test-owned network access. Test namespaces and resources are removed even after failure. OLM operator installations remain available, matching the install suite. Log-content validation, secret synchronization, CEL routing, and NetworkPolicy behavior are separate coverage.
 
 ### Running the Chains suite
 
