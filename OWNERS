@@ -1,10 +1,12 @@
 approvers:
+  - openshift-cherrypick-robot
   - anithapriyanatarajan
   - manthinasai
   - pramodbindal
   - srivickynesh
   - waveywaves
 reviewers:
+  - openshift-cherrypick-robot
   - anithapriyanatarajan
   - bharatmajjiga
   - jayesh-garg
