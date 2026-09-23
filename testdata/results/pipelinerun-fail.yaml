@@ -1,0 +1,16 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: pipeline-results-fail
+spec:
+  pipelineSpec:
+    tasks:
+      - name: fail-task
+        taskSpec:
+          steps:
+            - name: fail
+              image: registry.redhat.io/ubi9/ubi-minimal:latest
+              script: |
+                #!/bin/sh
+                echo "This task will fail"
+                exit 1

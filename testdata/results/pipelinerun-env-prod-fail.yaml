@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: prod-fail-match
+  labels:
+    env: prod
+spec:
+  pipelineSpec:
+    tasks:
+      - name: fail-task
+        taskSpec:
+          steps:
+            - name: fail
+              image: registry.redhat.io/ubi9/ubi-minimal:latest
+              script: |
+                #!/bin/sh
+                echo "Failing production run"
+                exit 1

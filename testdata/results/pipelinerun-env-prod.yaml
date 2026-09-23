@@ -1,0 +1,9 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: pipeline-results-env-prod
+  labels:
+    env: prod
+spec:
+  pipelineRef:
+    name: pipeline-results
