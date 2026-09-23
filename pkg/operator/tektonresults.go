@@ -198,3 +198,105 @@ func VerifyResultsRecords(resourceType string) error {
 	}
 	return nil
 }
+
+// ConfigureRetentionPolicy updates the retention policy ConfigMap in openshift-pipelines.
+func ConfigureRetentionPolicy(runAt, defaultRetention, maxRetention, policies string) error {
+	cmName := "tekton-results-config-results-retention-policy"
+	ns := "openshift-pipelines"
+
+	// Build the ConfigMap YAML
+	cmYAML := fmt.Sprintf(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: %s
+  namespace: %s
+data:
+  runAt: "%s"`, cmName, ns, runAt)
+
+	if defaultRetention != "" {
+		cmYAML += fmt.Sprintf("\n  defaultRetention: %s", defaultRetention)
+	}
+	if maxRetention != "" {
+		cmYAML += fmt.Sprintf("\n  maxRetention: %s", maxRetention)
+	}
+	if policies != "" {
+		cmYAML += fmt.Sprintf("\n  policies: |\n%s", policies)
+	}
+
+	// Apply ConfigMap (creates or updates)
+	cmd.MustSucceed("bash", "-c", fmt.Sprintf(`cat <<'EOF' | oc apply -f -
+%s
+EOF`, cmYAML))
+
+	log.Printf("Configured retention policy: runAt=%s, defaultRetention=%s, maxRetention=%s\n", runAt, defaultRetention, maxRetention)
+
+	// Verify ConfigMap was updated
+	result := cmd.MustSucceed("oc", "get", "cm", cmName, "-n", ns, "-o", "jsonpath={.data.runAt}")
+	if strings.TrimSpace(result.Stdout()) != runAt {
+		return fmt.Errorf("ConfigMap update verification failed: expected runAt=%s, got %s", runAt, result.Stdout())
+	}
+	log.Printf("ConfigMap %s updated successfully\n", cmName)
+
+	return nil
+}
+
+// VerifyResultExists verifies that a result still exists in the Results API.
+func VerifyResultExists(resourceType, name, namespace string) error {
+	ConfigureResultsCLI()
+	result := cmd.Run("opc", "results", resourceType, "describe", name, "-n", namespace, "-o", "json")
+	if result.ExitCode != 0 || strings.Contains(result.Stdout(), "not found") {
+		return fmt.Errorf("result for %s %s not found", resourceType, name)
+	}
+	return nil
+}
+
+// VerifyResultDeleted verifies that a result has been deleted from the Results API.
+func VerifyResultDeleted(resourceType, name, namespace string) error {
+	ConfigureResultsCLI()
+	result := cmd.Run("opc", "results", resourceType, "describe", name, "-n", namespace, "-o", "json")
+	if result.ExitCode == 0 && !strings.Contains(result.Stdout(), "not found") {
+		return fmt.Errorf("result for %s %s still exists (expected to be deleted)", resourceType, name)
+	}
+	log.Printf("Result for %s %s has been successfully deleted\n", resourceType, name)
+	return nil
+}
+
+// VerifyResultDeletedWithTimeout polls until the result is deleted or timeout is reached.
+// It checks every 10 seconds and returns as soon as the result is deleted.
+func VerifyResultDeletedWithTimeout(resourceType, name, namespace string, timeout time.Duration) error {
+	ConfigureResultsCLI()
+
+	pollInterval := 10 * time.Second
+	deadline := time.Now().Add(timeout)
+
+	log.Printf("Polling for deletion of %s %s (timeout: %s)\n", resourceType, name, timeout)
+
+	for time.Now().Before(deadline) {
+		result := cmd.Run("opc", "results", resourceType, "describe", name, "-n", namespace, "-o", "json")
+
+		// Result is deleted (either not found or explicit error)
+		if result.ExitCode != 0 || strings.Contains(result.Stdout(), "not found") {
+			elapsed := timeout - time.Until(deadline)
+			log.Printf("Result for %s %s deleted after %s\n", resourceType, name, elapsed.Round(time.Second))
+			return nil
+		}
+
+		// Still exists, wait before next poll
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			break
+		}
+
+		sleepDuration := pollInterval
+		if remaining < pollInterval {
+			sleepDuration = remaining
+		}
+
+		log.Printf("Result still exists, waiting %s before next check (remaining: %s)\n",
+			sleepDuration.Round(time.Second), remaining.Round(time.Second))
+		time.Sleep(sleepDuration)
+	}
+
+	return fmt.Errorf("timeout after %s: result for %s %s still exists (expected to be deleted)",
+		timeout, resourceType, name)
+}

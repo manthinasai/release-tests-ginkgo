@@ -1,0 +1,14 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: results-task-env-dev
+  labels:
+    env: dev
+spec:
+  taskSpec:
+    steps:
+      - name: echo
+        image: registry.redhat.io/ubi9/ubi-minimal:latest
+        script: |
+          #!/bin/sh
+          echo "TaskRun with env=dev label"
