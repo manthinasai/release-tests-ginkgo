@@ -391,7 +391,14 @@ func (oc *OC) CreateChainsImageRegistrySecret(dockerConfig string) {
 // ValidateAndCreateJibMavenSecret validates required environment variables and creates
 // the jib-maven registry credentials secret, then links it to the pipeline service account.
 // Skips the test if required environment variables are not set.
-func (oc *OC) ValidateAndCreateJibMavenSecret(namespace string) {
+//
+// It returns the target repository (JIB_MAVEN_REPOSITORY) that the credentials are valid
+// for. The caller must use this value as the pipeline's IMAGE param so Jib pushes to the
+// same registry the credentials authenticate against. Pushing to the OpenShift internal
+// registry (image-registry.openshift-image-registry.svc:5000) instead fails with
+// "Unauthorized ... 405 Method Not Allowed" because the credentials do not match and Jib's
+// push verbs are not fully supported by the integrated registry.
+func (oc *OC) ValidateAndCreateJibMavenSecret(namespace string) string {
 	repo := os.Getenv("JIB_MAVEN_REPOSITORY")
 	if repo == "" {
 		Skip("JIB_MAVEN_REPOSITORY not set -- skipping jib-maven test")
@@ -411,6 +418,8 @@ func (oc *OC) ValidateAndCreateJibMavenSecret(namespace string) {
 
 	// Link secret to pipeline service account
 	oc.LinkSecretToSA("jib-maven-image-registry-credentials", "pipeline", namespace)
+
+	return repo
 }
 
 // CopySecret copies a secret from one namespace to another, transforming metadata and data keys.

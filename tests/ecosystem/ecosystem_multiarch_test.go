@@ -7,6 +7,7 @@ import (
 
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/config"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/k8s"
+	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/opc"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/pipelines"
 )
 
@@ -45,13 +46,19 @@ var _ = Describe("jib-maven pipelinerun: PIPELINES-32-TC01", Label("ecosystem", 
 		ns := lastNamespace
 		k8s.WaitForServiceAccount(sharedClients, ns, "pipeline")
 
-		oc.ValidateAndCreateJibMavenSecret(ns)
+		// The returned repo is the external registry the credentials authenticate against.
+		// Jib must push there, not the OpenShift internal registry, or it fails with
+		// "Unauthorized ... 405 Method Not Allowed".
+		repo := oc.ValidateAndCreateJibMavenSecret(ns)
 
 		oc.Create("testdata/ecosystem/pipelines/jib-maven.yaml", ns)
 		oc.Create("testdata/pvc/pvc.yaml", ns)
-		oc.Create("testdata/ecosystem/pipelineruns/jib-maven.yaml", ns)
 
-		pipelines.ValidatePipelineRun(sharedClients, "jib-maven-run", "successful", ns)
+		params := map[string]string{"IMAGE": repo}
+		workspaces := map[string]string{"name=source": "claimName=shared-pvc"}
+		prName := opc.StartPipeline("jib-maven-pipeline", params, workspaces, ns, "--use-param-defaults")
+
+		pipelines.ValidatePipelineRun(sharedClients, prName, "successful", ns)
 	})
 })
 
@@ -74,11 +81,19 @@ var _ = Describe("jib-maven P&Z pipelinerun: PIPELINES-32-TC02", Label("ecosyste
 		ns := lastNamespace
 		k8s.WaitForServiceAccount(sharedClients, ns, "pipeline")
 
+		// The returned repo is the external registry the credentials authenticate against.
+		// Jib must push there, not the OpenShift internal registry, or it fails with
+		// "Unauthorized ... 405 Method Not Allowed".
+		repo := oc.ValidateAndCreateJibMavenSecret(ns)
+
 		oc.Create("testdata/ecosystem/pipelines/jib-maven-pz.yaml", ns)
 		oc.Create("testdata/pvc/pvc.yaml", ns)
-		oc.Create("testdata/ecosystem/pipelineruns/jib-maven-pz.yaml", ns)
 
-		pipelines.ValidatePipelineRun(sharedClients, "jib-maven-pz-run", "successful", ns)
+		params := map[string]string{"IMAGE": repo}
+		workspaces := map[string]string{"name=source": "claimName=shared-pvc"}
+		prName := opc.StartPipeline("jib-maven-pipeline", params, workspaces, ns, "--use-param-defaults")
+
+		pipelines.ValidatePipelineRun(sharedClients, prName, "successful", ns)
 	})
 })
 
