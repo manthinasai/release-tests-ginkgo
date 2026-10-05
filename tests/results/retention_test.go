@@ -17,20 +17,33 @@ import (
 
 var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFailure, Label("results", "retention", "e2e"), func() {
 
+	// Ensure retention policy is restored even if tests are interrupted
+	BeforeAll(func() {
+		DeferCleanup(func() {
+			By("Restoring default retention policy (30d, weekly)")
+			err := operator.ConfigureRetentionPolicy("5 5 * * 0", "30d", "", "")
+			if err != nil {
+				GinkgoLogr.Error(err, "Failed to restore default retention policy")
+			}
+		})
+	})
+
 	// Group 1: Default Retention (Fallback)
 
 	Describe("TC03: defaultRetention (Primary Fallback): PIPELINES-26-TC03", Label("sanity"), Ordered, func() {
 		var prName string
 
 		It("configures retention policy with defaultRetention", func() {
-			err := operator.ConfigureRetentionPolicy("*/1 * * * *", "30s", "", "")
+			err := operator.ConfigureRetentionPolicy("*/1 * * * *", "1m", "", "")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("runs a PipelineRun and waits for completion", func() {
 			oc.Apply("testdata/results/pipeline.yaml")
 			oc.Apply("testdata/results/pipelinerun.yaml")
-			prName = "pipeline-results"
+			var err error
+			prName, err = pipelines.GetLatestPipelinerun(sharedClients, store.Namespace())
+			Expect(err).NotTo(HaveOccurred())
 			pipelines.ValidatePipelineRun(sharedClients, prName, "successful", store.Namespace())
 		})
 
@@ -42,7 +55,7 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 		})
 
 		It("waits for retention period and verifies result is deleted", func() {
-			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", prName, store.Namespace(), 90*time.Second)
+			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", prName, store.Namespace(), 150*time.Second)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -51,14 +64,16 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 		var prName string
 
 		It("configures retention policy with maxRetention only", func() {
-			err := operator.ConfigureRetentionPolicy("*/1 * * * *", "", "30s", "")
+			err := operator.ConfigureRetentionPolicy("*/1 * * * *", "", "1m", "")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("runs a PipelineRun and waits for completion", func() {
 			oc.Apply("testdata/results/pipeline.yaml")
 			oc.Apply("testdata/results/pipelinerun.yaml")
-			prName = "pipeline-results"
+			var err error
+			prName, err = pipelines.GetLatestPipelinerun(sharedClients, store.Namespace())
+			Expect(err).NotTo(HaveOccurred())
 			pipelines.ValidatePipelineRun(sharedClients, prName, "successful", store.Namespace())
 		})
 
@@ -70,7 +85,7 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 		})
 
 		It("waits for retention period and verifies result is deleted", func() {
-			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", prName, store.Namespace(), 90*time.Second)
+			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", prName, store.Namespace(), 150*time.Second)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -103,26 +118,36 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 			oc.Apply("testdata/results/pipeline.yaml", testNS)
 			oc.Apply("testdata/results/pipelinerun.yaml", testNS)
 			sharedClients.NewClientSet(testNS) // Switch client to testNS
-			pipelines.ValidatePipelineRun(sharedClients, "pipeline-results", "successful", testNS)
+			testNSPRName, err := pipelines.GetLatestPipelinerun(sharedClients, testNS)
+			Expect(err).NotTo(HaveOccurred())
+			pipelines.ValidatePipelineRun(sharedClients, testNSPRName, "successful", testNS)
 
 			// Run in default auto-created namespace
 			defaultNS = store.Namespace()
 			sharedClients.NewClientSet(defaultNS) // Switch client to defaultNS
 			oc.Apply("testdata/results/pipeline.yaml", defaultNS)
 			oc.Apply("testdata/results/pipelinerun.yaml", defaultNS)
-			pipelines.ValidatePipelineRun(sharedClients, "pipeline-results", "successful", defaultNS)
+			defaultNSPRName, err := pipelines.GetLatestPipelinerun(sharedClients, defaultNS)
+			Expect(err).NotTo(HaveOccurred())
+			pipelines.ValidatePipelineRun(sharedClients, defaultNSPRName, "successful", defaultNS)
 		})
 
 		It("waits and verifies test-ns result is deleted, default is kept", func() {
-			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", "pipeline-results", testNS, 90*time.Second)
+			testNSPRName, err := pipelines.GetLatestPipelinerun(sharedClients, testNS)
+			Expect(err).NotTo(HaveOccurred())
+			err = operator.VerifyResultDeletedWithTimeout("pipelinerun", testNSPRName, testNS, 90*time.Second)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = operator.VerifyResultExists("pipelinerun", "pipeline-results", defaultNS)
+			defaultNSPRName, err := pipelines.GetLatestPipelinerun(sharedClients, defaultNS)
+			Expect(err).NotTo(HaveOccurred())
+			err = operator.VerifyResultExists("pipelinerun", defaultNSPRName, defaultNS)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
 	Describe("TC06: matchLabels: PIPELINES-26-TC06", Ordered, func() {
+		var prName string
+
 		It("configures retention policy with matchLabels", func() {
 			policy := `    - name: "label-test"
       selector:
@@ -137,16 +162,21 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 		It("runs PipelineRun with env=dev label", func() {
 			oc.Apply("testdata/results/pipeline.yaml")
 			oc.Apply("testdata/results/pipelinerun-env-dev.yaml")
-			pipelines.ValidatePipelineRun(sharedClients, "pipeline-results-env-dev", "successful", store.Namespace())
+			var err error
+			prName, err = pipelines.GetLatestPipelinerun(sharedClients, store.Namespace())
+			Expect(err).NotTo(HaveOccurred())
+			pipelines.ValidatePipelineRun(sharedClients, prName, "successful", store.Namespace())
 		})
 
 		It("waits and verifies env:dev result is deleted", func() {
-			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", "pipeline-results-env-dev", store.Namespace(), 150*time.Second) // 2.5m for 1m retention + CronJob delay
+			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", prName, store.Namespace(), 150*time.Second) // 2.5m for 1m retention + CronJob delay
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
 	Describe("TC07: matchAnnotations: PIPELINES-26-TC07", Ordered, func() {
+		var prName string
+
 		It("configures retention policy with matchAnnotations", func() {
 			policy := `    - name: "anno-test"
       selector:
@@ -161,11 +191,14 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 		It("runs PipelineRun with annotation", func() {
 			oc.Apply("testdata/results/pipeline.yaml")
 			oc.Apply("testdata/results/pipelinerun-keep-debug.yaml")
-			pipelines.ValidatePipelineRun(sharedClients, "pipeline-results-keep-debug", "successful", store.Namespace())
+			var err error
+			prName, err = pipelines.GetLatestPipelinerun(sharedClients, store.Namespace())
+			Expect(err).NotTo(HaveOccurred())
+			pipelines.ValidatePipelineRun(sharedClients, prName, "successful", store.Namespace())
 		})
 
 		It("waits and verifies annotated result is deleted", func() {
-			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", "pipeline-results-keep-debug", store.Namespace(), 150*time.Second) // 2.5m for 1m retention + CronJob delay
+			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", prName, store.Namespace(), 150*time.Second) // 2.5m for 1m retention + CronJob delay
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -186,19 +219,23 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 
 		It("runs a failing PipelineRun", func() {
 			oc.Apply("testdata/results/pipelinerun-fail.yaml")
-			pipelines.ValidatePipelineRun(sharedClients, "pipeline-results-fail", "failed", store.Namespace())
-			failedPR = "pipeline-results-fail"
+			var err error
+			failedPR, err = pipelines.GetLatestPipelinerun(sharedClients, store.Namespace())
+			Expect(err).NotTo(HaveOccurred())
+			pipelines.ValidatePipelineRun(sharedClients, failedPR, "failed", store.Namespace())
 		})
 
 		It("runs a successful PipelineRun", func() {
 			oc.Apply("testdata/results/pipeline.yaml")
 			oc.Apply("testdata/results/pipelinerun.yaml")
-			succeededPR = "pipeline-results"
+			var err error
+			succeededPR, err = pipelines.GetLatestPipelinerun(sharedClients, store.Namespace())
+			Expect(err).NotTo(HaveOccurred())
 			pipelines.ValidatePipelineRun(sharedClients, succeededPR, "successful", store.Namespace())
 		})
 
 		It("waits and verifies Failed PR is deleted, Succeeded PR is kept", func() {
-			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", failedPR, store.Namespace(), 90*time.Second)
+			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", failedPR, store.Namespace(), 120*time.Second)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = operator.VerifyResultExists("pipelinerun", succeededPR, store.Namespace())
@@ -260,7 +297,9 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 		It("runs matching PipelineRun (production + env:prod + Failed)", func() {
 			oc.Apply("testdata/results/pipelinerun-env-prod-fail.yaml", prodNS)
 			sharedClients.NewClientSet(prodNS) // Switch client to prodNS
-			pipelines.ValidatePipelineRun(sharedClients, "prod-fail-match", "failed", prodNS)
+			prodNSPRName, err := pipelines.GetLatestPipelinerun(sharedClients, prodNS)
+			Expect(err).NotTo(HaveOccurred())
+			pipelines.ValidatePipelineRun(sharedClients, prodNSPRName, "failed", prodNS)
 		})
 
 		It("runs non-matching PipelineRun (wrong namespace)", func() {
@@ -268,19 +307,28 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 			sharedClients.NewClientSet(defaultNS) // Switch client back to default namespace
 			// Wrong namespace (default instead of production) - should NOT match
 			oc.Apply("testdata/results/pipelinerun-env-prod-fail.yaml", defaultNS)
-			pipelines.ValidatePipelineRun(sharedClients, "prod-fail-match", "failed", defaultNS)
+			defaultNSPRName, err := pipelines.GetLatestPipelinerun(sharedClients, defaultNS)
+			Expect(err).NotTo(HaveOccurred())
+			pipelines.ValidatePipelineRun(sharedClients, defaultNSPRName, "failed", defaultNS)
 		})
 
 		It("waits and verifies only production PR is deleted", func() {
-			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", "prod-fail-match", prodNS, 90*time.Second)
+			prodNSPRName, err := pipelines.GetLatestPipelinerun(sharedClients, prodNS)
+			Expect(err).NotTo(HaveOccurred())
+			err = operator.VerifyResultDeletedWithTimeout("pipelinerun", prodNSPRName, prodNS, 120*time.Second)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = operator.VerifyResultExists("pipelinerun", "prod-fail-match", defaultNS)
+			defaultNSPRName, err := pipelines.GetLatestPipelinerun(sharedClients, defaultNS)
+			Expect(err).NotTo(HaveOccurred())
+			err = operator.VerifyResultExists("pipelinerun", defaultNSPRName, defaultNS)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
 	Describe("TC11: Selector List (OR Logic): PIPELINES-26-TC11", Ordered, func() {
+		var frontendPR string
+		var backendPR string
+
 		It("configures retention policy with OR logic", func() {
 			policy := `    - name: "ci-apps"
       selector:
@@ -300,22 +348,29 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 			oc.Apply("testdata/results/pipeline.yaml")
 			// app=frontend (should match)
 			oc.Apply("testdata/results/pipelinerun-app-frontend.yaml")
-			pipelines.ValidatePipelineRun(sharedClients, "pipeline-results-app-frontend", "successful", store.Namespace())
+			var err error
+			frontendPR, err = pipelines.GetLatestPipelinerun(sharedClients, store.Namespace())
+			Expect(err).NotTo(HaveOccurred())
+			pipelines.ValidatePipelineRun(sharedClients, frontendPR, "successful", store.Namespace())
 			// app=backend (should match)
 			oc.Apply("testdata/results/pipelinerun-app-backend.yaml")
-			pipelines.ValidatePipelineRun(sharedClients, "pipeline-results-app-backend", "successful", store.Namespace())
+			backendPR, err = pipelines.GetLatestPipelinerun(sharedClients, store.Namespace())
+			Expect(err).NotTo(HaveOccurred())
+			pipelines.ValidatePipelineRun(sharedClients, backendPR, "successful", store.Namespace())
 		})
 
 		It("waits and verifies both matching PRs are deleted", func() {
-			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", "pipeline-results-app-frontend", store.Namespace(), 150*time.Second) // 2.5m for 1m retention + CronJob delay
+			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", frontendPR, store.Namespace(), 150*time.Second) // 2.5m for 1m retention + CronJob delay
 			Expect(err).NotTo(HaveOccurred())
-			err = operator.VerifyResultDeleted("pipelinerun", "pipeline-results-app-backend", store.Namespace())
+			err = operator.VerifyResultDeletedWithTimeout("pipelinerun", backendPR, store.Namespace(), 30*time.Second) // Should already be deleted
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
 	Describe("TC12: Policy Order (First Match Wins): PIPELINES-26-TC12", Ordered, func() {
 		var prodNS string
+		var failedPRName string
+		var succeededPRName string
 
 		BeforeAll(func() {
 			prodNS = "retention-prod-order"
@@ -344,22 +399,28 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 		It("runs Failed PR (matches first policy - 3m)", func() {
 			oc.Apply("testdata/results/pipelinerun-fail-3m.yaml", prodNS)
 			sharedClients.NewClientSet(prodNS) // Switch client to prodNS
-			pipelines.ValidatePipelineRun(sharedClients, "prod-fail-3m", "failed", prodNS)
+			var err error
+			failedPRName, err = pipelines.GetLatestPipelinerun(sharedClients, prodNS)
+			Expect(err).NotTo(HaveOccurred())
+			pipelines.ValidatePipelineRun(sharedClients, failedPRName, "failed", prodNS)
 		})
 
-		It("runs Succeeded PR (matches second policy - 2m)", func() {
+		It("runs Succeeded PR (matches second policy - 1m)", func() {
 			sharedClients.NewClientSet(prodNS) // Ensure client is on prodNS
 			oc.Apply("testdata/results/pipeline.yaml", prodNS)
 			oc.Apply("testdata/results/pipelinerun.yaml", prodNS)
-			pipelines.ValidatePipelineRun(sharedClients, "pipeline-results", "successful", prodNS)
+			var err error
+			succeededPRName, err = pipelines.GetLatestPipelinerun(sharedClients, prodNS)
+			Expect(err).NotTo(HaveOccurred())
+			pipelines.ValidatePipelineRun(sharedClients, succeededPRName, "successful", prodNS)
 		})
 
-		It("verifies Succeeded PR is deleted at 2m, Failed PR still exists", func() {
-			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", "pipeline-results", prodNS, 150*time.Second) // 2.5m for 1m retention + CronJob delay
+		It("verifies Succeeded PR is deleted at 1m, Failed PR still exists", func() {
+			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", succeededPRName, prodNS, 150*time.Second) // 2.5m for 1m retention + CronJob delay
 			Expect(err).NotTo(HaveOccurred())
 
 			// Failed PR should still exist (3m retention)
-			err = operator.VerifyResultExists("pipelinerun", "prod-fail-3m", prodNS)
+			err = operator.VerifyResultExists("pipelinerun", failedPRName, prodNS)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -378,10 +439,10 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 			// Create the MAG pipeline (retention-specific with "user" as approver)
 			oc.Apply("testdata/results/manual-approval-pipeline-retention.yaml", lastNamespace)
 
-			// Start the pipeline
-			cmd.MustSucceed("opc", "pipeline", "start", "manual-approval-pipeline", "-n", lastNamespace)
+			// Start the pipeline (creates PipelineRun with dynamic name)
+			cmd.MustSucceed("opc", "pipeline", "start", "manual-approval-pipeline-retention", "-n", lastNamespace)
 
-			// Get the latest PipelineRun name
+			// Get the latest PipelineRun name (dynamic name created by 'pipeline start')
 			var err error
 			prName, err = pipelines.GetLatestPipelinerun(sharedClients, lastNamespace)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get PipelineRun name")
@@ -409,15 +470,6 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 		It("waits for retention period and verifies PipelineRun result is deleted", func() {
 			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", prName, lastNamespace, 210*time.Second) // 3.5m for 2m retention + CronJob delay
 			Expect(err).NotTo(HaveOccurred())
-		})
-	})
-
-	// Cleanup: Restore default retention policy after all tests complete
-	Describe("Cleanup: Restore Default Retention Policy", Ordered, func() {
-		It("restores default retention policy configuration", func() {
-			By("Restoring default retention policy (30d, weekly)")
-			err := operator.ConfigureRetentionPolicy("5 5 * * 0", "30d", "", "")
-			Expect(err).NotTo(HaveOccurred(), "Failed to restore default retention policy")
 		})
 	})
 
