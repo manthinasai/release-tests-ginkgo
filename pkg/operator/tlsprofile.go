@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/clients"
-	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/cmd"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/config"
 )
 
@@ -24,25 +23,6 @@ type tlsProfilePatch struct {
 
 type tlsProfilePatchSpec struct {
 	TLSSecurityProfile *configv1.TLSSecurityProfile `json:"tlsSecurityProfile"`
-}
-
-// IsHostedCluster returns true when the cluster is a HyperShift hosted cluster
-// (controlPlaneTopology == "External"). On hosted clusters, the APIServer/cluster
-// resource is managed via the HostedCluster object and cannot be patched directly,
-// so TLS profile propagation tests must be skipped.
-//
-// Uses the oc CLI rather than a Go API client so that it works in environments
-// where the test process network is restricted (e.g. sandboxed runners).
-func IsHostedCluster(_ *clients.Clients) bool {
-	result := cmd.Run("oc", "get", "infrastructure", "cluster",
-		"-o", "jsonpath={.status.controlPlaneTopology}")
-	if result.ExitCode != 0 {
-		log.Printf("Warning: could not get infrastructure/cluster topology: %s", result.Combined())
-		return false
-	}
-	topology := strings.TrimSpace(result.Stdout())
-	log.Printf("Cluster controlPlaneTopology: %q", topology)
-	return topology == "External"
 }
 
 // GetClusterTLSProfileType reads the current tlsSecurityProfile type from

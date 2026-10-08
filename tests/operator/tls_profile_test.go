@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/config"
+	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/openshift"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/operator"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/store"
 )
@@ -40,7 +41,7 @@ var _ = Describe("SRVKP-11926: Central TLS profile propagation to Pipelines comp
 		var originalProfile string
 
 		BeforeAll(func() {
-			if operator.IsHostedCluster(sharedClients) {
+			if openshift.IsHostedCluster() {
 				Skip("Skipping TLS profile propagation tests: APIServer/cluster is immutable on HyperShift hosted clusters")
 			}
 

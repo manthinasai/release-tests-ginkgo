@@ -30,6 +30,7 @@ Key environment variables:
 | `PAC_VERSION` | Expected PAC version |
 | `GITLAB_TOKEN` | GitLab API token *(PAC tests)* |
 | `GITHUB_TOKEN` | GitHub token *(resolver tests)* |
+| `MAG_USE_IMPERSONATION` | `true`/`false`: impersonate the MAG test users instead of logging in as them; defaults to `true` on hosted control plane clusters *(MAG group-user tests, see below)* |
 | `KO_DOCKER_REPO` | Registry for built test images |
 | `CHAINS_REPOSITORY` | OCI repo to push Kaniko-built images to *(Chains TC02)* |
 | `CHAINS_DOCKER_CONFIG_JSON` | Raw JSON contents of `docker/config.json` with push access to `CHAINS_REPOSITORY` *(Chains TC02)* |
@@ -264,6 +265,26 @@ ginkgo run --label-filter=chains --timeout=30m ./tests/chains/
 > (i.e. the output of `cat ~/.docker/config.json`) that has push access to `CHAINS_REPOSITORY`.
 > Do **not** base64-encode it — the test passes it directly to `oc create secret` as
 > `--from-literal=.dockerconfigjson=<value>` which requires plain JSON.
+
+### Running the Manual Approval Gate suite
+
+The group-user specs (`mag-group-user`, PIPELINES-37) approve and reject ApprovalTasks as
+five different users, `user1`–`user5`, who are placed in OpenShift Groups by the tests:
+
+- On a standalone cluster the users must exist in an HTPasswd identity provider. The
+  tests log in as each user with `oc login`, using `<USER>_PASS` (e.g. `USER1_PASS`) as
+  the password and falling back to the user name.
+- On hosted control plane clusters (HyperShift / ROSA HCP) the OAuth configuration is
+  owned by the management cluster and no identity provider can be added, so the tests
+  instead impersonate the users with the test runner's own credentials (which therefore
+  need `impersonate` rights on users and groups, as cluster-admin has). This is detected
+  automatically from `infrastructure/cluster`; set `MAG_USE_IMPERSONATION=true|false`
+  to force either mode.
+
+```bash
+export KUBECONFIG=/path/to/kubeconfig
+ginkgo run --label-filter=approvalgate --timeout=30m ./tests/mag/
+```
 
 ## Local Testing Walkthrough
 

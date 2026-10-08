@@ -24,23 +24,29 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	. "github.com/onsi/gomega" //nolint:revive,staticcheck // dot import is idiomatic for Gomega
 	atv1alpha1 "github.com/openshift-pipelines/manual-approval-gate/pkg/apis/approvaltask/v1alpha1"
+	userv1 "github.com/openshift/api/user/v1"
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	mag "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	"github.com/tektoncd/operator/test/utils"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/clients"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/cmd"
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/config"
+	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/openshift"
 )
 
 // ApprovalTaskInfo holds summary information about a Manual Approval Gate task.
@@ -517,6 +523,110 @@ func stateHuman(at *atv1alpha1.ApprovalTask) string {
 }
 
 // ── Per-User Action Helpers ───────────────────────────────────────────────────
+//
+// The per-user helpers run opc with a KUBECONFIG that acts as the given test
+// user. By default that kubeconfig comes from a password login as one of the
+// HTPasswd users (user1..user5). Hosted control plane clusters (HyperShift,
+// ROSA HCP) cannot get an HTPasswd identity provider, so there the helpers
+// instead impersonate the users with the test runner's own credentials.
+
+// UseImpersonationEnv overrides the automatic choice between password logins
+// and impersonation for the per-user approval helpers. It accepts the values
+// understood by strconv.ParseBool; when unset, impersonation is used on hosted
+// control plane clusters only.
+const UseImpersonationEnv = "MAG_USE_IMPERSONATION"
+
+var (
+	impersonationOnce sync.Once
+	impersonation     bool
+	impersonationErr  error
+)
+
+func useImpersonation() bool {
+	impersonationOnce.Do(func() {
+		if v := strings.TrimSpace(os.Getenv(UseImpersonationEnv)); v != "" {
+			impersonation, impersonationErr = strconv.ParseBool(v)
+			if impersonationErr != nil {
+				impersonationErr = fmt.Errorf("invalid %s=%q: %w", UseImpersonationEnv, v, impersonationErr)
+				return
+			}
+			log.Printf("MAG per-user actions: impersonation=%t (from %s)", impersonation, UseImpersonationEnv)
+			return
+		}
+		impersonation = openshift.IsHostedCluster()
+		if impersonation {
+			log.Printf("MAG per-user actions: impersonating users (hosted control plane, no HTPasswd logins)")
+		}
+	})
+	Expect(impersonationErr).NotTo(HaveOccurred())
+	return impersonation
+}
+
+// userEnv returns the environment that makes opc act as user, plus a cleanup
+// func to call once the command has run.
+func userEnv(user string) (env []string, cleanup func()) {
+	if useImpersonation() {
+		kc := impersonationKubeconfig(user)
+		return []string{"KUBECONFIG=" + kc}, func() { _ = os.Remove(kc) }
+	}
+	return []string{"KUBECONFIG=" + ensureUserKubeconfig(user)}, func() {}
+}
+
+// impersonationKubeconfig writes a self-contained kubeconfig that uses the test
+// runner's credentials to impersonate user and returns its path. It is built
+// fresh for every call so that group membership changes made by the tests are
+// reflected immediately.
+//
+// The user's OpenShift Group memberships are passed as ImpersonateGroups: the
+// API server grants an impersonated request only the groups named in the
+// Impersonate-Group headers (plus system:authenticated) and does not resolve
+// Group objects for it, while opc derives the caller's groups from a
+// SelfSubjectReview to decide how to record the approval.
+func impersonationKubeconfig(user string) string {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	loadingRules.ExplicitPath = config.Flags.Kubeconfig
+	raw, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{}).RawConfig()
+	Expect(err).NotTo(HaveOccurred(), "failed to load the test runner kubeconfig")
+
+	if config.Flags.Context != "" {
+		raw.CurrentContext = config.Flags.Context
+	}
+	ctx, ok := raw.Contexts[raw.CurrentContext]
+	Expect(ok).To(BeTrue(), "context %q not found in the test runner kubeconfig", raw.CurrentContext)
+	if config.Flags.Cluster != "" {
+		ctx.Cluster = config.Flags.Cluster
+	}
+	Expect(clientcmdapi.MinifyConfig(&raw)).To(Succeed(), "failed to reduce the kubeconfig to context %q", raw.CurrentContext)
+	Expect(clientcmdapi.FlattenConfig(&raw)).To(Succeed(), "failed to embed the kubeconfig credentials")
+
+	auth := raw.AuthInfos[ctx.AuthInfo]
+	Expect(auth).NotTo(BeNil(), "context %q has no credentials to impersonate %s with", raw.CurrentContext, user)
+	auth.Impersonate = user
+	auth.ImpersonateGroups = userGroups(user)
+
+	tmp, err := os.CreateTemp("", fmt.Sprintf("mag-impersonate-%s-", user))
+	Expect(err).NotTo(HaveOccurred(), "failed to create temp kubeconfig for %s", user)
+	_ = tmp.Close()
+	kcPath := tmp.Name()
+	Expect(clientcmd.WriteToFile(raw, kcPath)).To(Succeed(), "failed to write impersonation kubeconfig for %s", user)
+	return kcPath
+}
+
+// userGroups returns the sorted names of the OpenShift Groups user belongs to.
+func userGroups(user string) []string {
+	var list userv1.GroupList
+	out := cmd.MustSucceed("oc", "get", "groups", "-o", "json").Stdout()
+	Expect(json.Unmarshal([]byte(out), &list)).To(Succeed(), "failed to parse `oc get groups` output")
+
+	groups := make([]string, 0, len(list.Items))
+	for _, g := range list.Items {
+		if slices.Contains(g.Users, user) {
+			groups = append(groups, g.Name)
+		}
+	}
+	sort.Strings(groups)
+	return groups
+}
 
 func ensureMAGAPIServer() string {
 	magAPIServerOnce.Do(func() {
@@ -578,44 +688,48 @@ func CleanupUserKubeconfigs() {
 
 // ApproveApprovalTaskAsUser approves the task as the given user.
 func ApproveApprovalTaskAsUser(user, task, namespace, message string) {
-	kc := ensureUserKubeconfig(user)
+	env, cleanup := userEnv(user)
+	defer cleanup()
 	args := []string{"opc", "approvaltask", "approve", task, "-n", namespace}
 	if strings.TrimSpace(message) != "" {
 		args = append(args, "-m", message)
 	}
-	cmd.MustSucceedWithEnv([]string{"KUBECONFIG=" + kc}, args...)
+	cmd.MustSucceedWithEnv(env, args...)
 }
 
 // RejectApprovalTaskAsUser rejects the task as the given user.
 func RejectApprovalTaskAsUser(user, task, namespace, message string) {
-	kc := ensureUserKubeconfig(user)
+	env, cleanup := userEnv(user)
+	defer cleanup()
 	args := []string{"opc", "approvaltask", "reject", task, "-n", namespace}
 	if strings.TrimSpace(message) != "" {
 		args = append(args, "-m", message)
 	}
-	cmd.MustSucceedWithEnv([]string{"KUBECONFIG=" + kc}, args...)
+	cmd.MustSucceedWithEnv(env, args...)
 }
 
 // ApproveApprovalTaskExpectFailAsUser asserts that the approval attempt fails (e.g. non-member).
 func ApproveApprovalTaskExpectFailAsUser(user, task, namespace, message string) {
-	kc := ensureUserKubeconfig(user)
+	env, cleanup := userEnv(user)
+	defer cleanup()
 	args := []string{"opc", "approvaltask", "approve", task, "-n", namespace}
 	if strings.TrimSpace(message) != "" {
 		args = append(args, "-m", message)
 	}
-	res := cmd.RunWithEnv([]string{"KUBECONFIG=" + kc}, args...)
+	res := cmd.RunWithEnv(env, args...)
 	Expect(res.ExitCode).NotTo(Equal(0),
 		"expected approval by %s on %s to fail, but it succeeded", user, task)
 }
 
 // ApproveApprovalTaskAllowFinalStateAsUser approves but tolerates "already reached final state" errors.
 func ApproveApprovalTaskAllowFinalStateAsUser(user, task, namespace, message string) {
-	kc := ensureUserKubeconfig(user)
+	env, cleanup := userEnv(user)
+	defer cleanup()
 	args := []string{"opc", "approvaltask", "approve", task, "-n", namespace}
 	if strings.TrimSpace(message) != "" {
 		args = append(args, "-m", message)
 	}
-	res := cmd.RunWithEnv([]string{"KUBECONFIG=" + kc}, args...)
+	res := cmd.RunWithEnv(env, args...)
 	if res.ExitCode == 0 {
 		return
 	}
