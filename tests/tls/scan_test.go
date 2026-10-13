@@ -115,12 +115,11 @@ var _ = Describe("SRVKP-11926: TLS scanner PQC compliance — all Pipelines comp
 				tlsscanner.AssertComponentPQCCompliant(scanResults, config.ConsolePluginDeployment)
 			})
 
-		// TC09: tkn-cli-serve (Apache httpd). The Dockerfile has been fixed to remove
-		// the default SSL virtual host so the scanner will not detect spurious SSL on
-		// the pod IP. This test stays as a PQC compliance gate — it will pass once the
-		// fixed image is deployed and the scanner can verify no unexpected TLS exposure.
-		It("SRVKP-11926-TC09: tkn-cli-serve (apache httpd) port 8443 is fully PQC compliant",
+		// TC09: tkn-cli-serve (Apache httpd) uses OpenShift edge TLS termination.
+		// The pod serves plain HTTP on 8080; TLS is handled at the Route. Assert
+		// that the scanner sees only NO_TLS (no spurious pod-level SSL on 8443).
+		It("SRVKP-11926-TC09: tkn-cli-serve (apache httpd) uses edge TLS termination",
 			Label("httpd"), func() {
-				tlsscanner.AssertComponentPQCCompliant(scanResults, config.TknDeployment)
+				tlsscanner.AssertComponentEdgeTerminated(scanResults, config.TknDeployment)
 			})
 	})
