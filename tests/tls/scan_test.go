@@ -27,7 +27,13 @@ func ensureScanned() {
 
 		tlsscanner.SetupScannerNamespace()
 		tlsscanner.SetupScannerRBAC()
-		DeferCleanup(tlsscanner.TeardownScannerRBAC)
+		// Product NPs only allow openshift-console → console-plugin:8443.
+		// Temporarily allow the scanner namespace so the probe can negotiate TLS.
+		tlsscanner.AllowScannerIngressToConsolePlugin()
+		DeferCleanup(func() {
+			tlsscanner.TeardownScannerIngressToConsolePlugin()
+			tlsscanner.TeardownScannerRBAC()
+		})
 
 		podName := tlsscanner.RunScannerJob(sharedClients, config.TargetNamespace)
 
