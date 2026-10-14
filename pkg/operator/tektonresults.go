@@ -198,3 +198,92 @@ func VerifyResultsRecords(resourceType string) error {
 	}
 	return nil
 }
+
+// ConfigureRetentionPolicy configures the retention policy via TektonConfig CR.
+// Uses JSON patch replace to ensure old fields are removed, not merged.
+func ConfigureRetentionPolicy(runAt, defaultRetention, maxRetention, policies string) error {
+	// Build the data fields - only include fields with values
+	dataFields := []string{fmt.Sprintf(`"runAt":"%s"`, runAt)}
+
+	if defaultRetention != "" {
+		dataFields = append(dataFields, fmt.Sprintf(`"defaultRetention":"%s"`, defaultRetention))
+	}
+
+	// Only include maxRetention if it has a value (empty string causes validation error)
+	if maxRetention != "" {
+		dataFields = append(dataFields, fmt.Sprintf(`"maxRetention":"%s"`, maxRetention))
+	}
+
+	if policies != "" {
+		// Escape the policies string for JSON
+		escapedPolicies := strings.ReplaceAll(policies, `\`, `\\`)
+		escapedPolicies = strings.ReplaceAll(escapedPolicies, `"`, `\"`)
+		escapedPolicies = strings.ReplaceAll(escapedPolicies, "\n", `\n`)
+		dataFields = append(dataFields, fmt.Sprintf(`"policies":"%s"`, escapedPolicies))
+	}
+
+	// Use JSON patch "replace" operation to replace the entire data section
+	// This ensures old fields (maxRetention, policies) are removed, not merged
+	patchData := fmt.Sprintf(
+		`[{"op":"replace","path":"/spec/result/options/configMaps/tekton-results-config-results-retention-policy/data","value":{%s}}]`,
+		strings.Join(dataFields, ","),
+	)
+
+	log.Printf("Patching TektonConfig retention policy: runAt=%s, defaultRetention=%s, maxRetention=%s, policies=%v\n",
+		runAt, defaultRetention, maxRetention, policies != "")
+
+	// Patch TektonConfig with JSON patch replace operation
+	cmd.MustSucceed("oc", "patch", "tektonconfig", "config", "--type=json", "-p", patchData)
+
+	return nil
+}
+
+// VerifyResultExists verifies that a result still exists in the Results API.
+func VerifyResultExists(resourceType, name, namespace string) error {
+	ConfigureResultsCLI()
+	result := cmd.Run("opc", "results", resourceType, "describe", name, "-n", namespace, "-o", "json")
+	if result.ExitCode != 0 || strings.Contains(result.Stdout(), "not found") {
+		return fmt.Errorf("result for %s %s not found", resourceType, name)
+	}
+	return nil
+}
+
+// VerifyResultDeletedWithTimeout polls until the result is deleted or timeout is reached.
+// It checks every 10 seconds and returns as soon as the result is deleted.
+func VerifyResultDeletedWithTimeout(resourceType, name, namespace string, timeout time.Duration) error {
+	ConfigureResultsCLI()
+
+	pollInterval := 10 * time.Second
+	deadline := time.Now().Add(timeout)
+
+	log.Printf("Polling for deletion of %s %s (timeout: %s)\n", resourceType, name, timeout)
+
+	for time.Now().Before(deadline) {
+		result := cmd.Run("opc", "results", resourceType, "describe", name, "-n", namespace, "-o", "json")
+
+		// Result is deleted (either not found or explicit error)
+		if result.ExitCode != 0 || strings.Contains(result.Stdout(), "not found") {
+			elapsed := timeout - time.Until(deadline)
+			log.Printf("Result for %s %s deleted after %s\n", resourceType, name, elapsed.Round(time.Second))
+			return nil
+		}
+
+		// Still exists, wait before next poll
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			break
+		}
+
+		sleepDuration := pollInterval
+		if remaining < pollInterval {
+			sleepDuration = remaining
+		}
+
+		log.Printf("Result still exists, waiting %s before next check (remaining: %s)\n",
+			sleepDuration.Round(time.Second), remaining.Round(time.Second))
+		time.Sleep(sleepDuration)
+	}
+
+	return fmt.Errorf("timeout after %s: result for %s %s still exists (expected to be deleted)",
+		timeout, resourceType, name)
+}
