@@ -19,7 +19,7 @@ spec:
     params:
     - name: approvers
       value:
-      - user
+      - user1
       - kube:admin
       - system:admin
       - cluster-admin

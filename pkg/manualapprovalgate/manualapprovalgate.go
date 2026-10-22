@@ -89,8 +89,11 @@ func ListApprovalTask(cs *clients.Clients) ([]ApprovalTaskInfo, error) {
 	err := wait.PollUntilContextTimeout(cs.Ctx, config.APIRetry, config.APITimeout, false, func(ctx context.Context) (bool, error) {
 		at, err := cs.ApprovalTask.List(ctx, metav1.ListOptions{})
 		if err != nil {
+			// Tolerate transient errors (rate-limiter blips, momentary API
+			// unavailability) by retrying within the poll window instead of
+			// aborting on the first failure.
 			log.Printf("Failed to list approval tasks, retrying...: %v", err)
-			return false, err
+			return false, nil
 		}
 
 		if len(at.Items) == 0 {

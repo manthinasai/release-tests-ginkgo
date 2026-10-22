@@ -569,7 +569,15 @@ func RestoreOriginalPrunerState(originalEnabled *bool) error {
 }
 
 // AssertNoStuckInstallerSets verifies that no TektonInstallerSets are in a non-ready state.
+//
+// Polls because TektonConfig can report Ready before all InstallerSets have finished
+// reconciling after an enableMetricsMTLS toggle — a one-shot check races the rollout
+// and flakes while sets are transiently not-ready.
 func AssertNoStuckInstallerSets() error {
+	return pollUntilNoError(context.Background(), checkNoStuckInstallerSets)
+}
+
+func checkNoStuckInstallerSets() error {
 	result := cmd.Run("oc", "get", "tektoninstallersets", "-o",
 		"jsonpath={range .items[*]}{.metadata.name}={.status.conditions[?(@.type==\"Ready\")].status}{\"\\n\"}{end}")
 	if result.ExitCode != 0 {

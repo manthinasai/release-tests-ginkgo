@@ -55,7 +55,11 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 		})
 
 		It("waits for retention period and verifies result is deleted", func() {
-			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", prName, store.Namespace(), 150*time.Second)
+			// 3.5m margin for 1m retention: the results pruner is an async, ~1-minute
+			// cron, and ConfigureRetentionPolicy's reschedule adds further lag — worst
+			// case ≈ retention + next-tick + reschedule. The poll returns as soon as the
+			// result is deleted, so the extra margin only guards against cron jitter.
+			err := operator.VerifyResultDeletedWithTimeout("pipelinerun", prName, store.Namespace(), 210*time.Second)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -135,7 +139,7 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 		It("waits and verifies test-ns result is deleted, default is kept", func() {
 			testNSPRName, err := pipelines.GetLatestPipelinerun(sharedClients, testNS)
 			Expect(err).NotTo(HaveOccurred())
-			err = operator.VerifyResultDeletedWithTimeout("pipelinerun", testNSPRName, testNS, 90*time.Second)
+			err = operator.VerifyResultDeletedWithTimeout("pipelinerun", testNSPRName, testNS, 150*time.Second) // 2.5m for 1m retention + CronJob delay
 			Expect(err).NotTo(HaveOccurred())
 
 			defaultNSPRName, err := pipelines.GetLatestPipelinerun(sharedClients, defaultNS)
@@ -449,11 +453,18 @@ var _ = Describe("Results Retention Policy: PIPELINES-26", Ordered, ContinueOnFa
 			Expect(prName).NotTo(BeEmpty(), "PipelineRun name is empty")
 		})
 
-		It("approves the approval task as user", func() {
+		It("approves the approval task as user1", func() {
+			// Since SRVKP-12172, system:authenticated no longer inherits cluster-wide
+			// ApprovalTask access, so the approver needs an explicit namespace RoleBinding
+			// to the manual-approval-gate-approver ClusterRole. The MAG suite wires this
+			// via an approvalgate-users BeforeEach; the results suite does not, so grant it
+			// here for the per-Describe namespace before approving as user1.
+			approvalgate.EnsureApproverRoleBindings(lastNamespace)
+
 			tasks, err := approvalgate.ListApprovalTask(sharedClients)
 			Expect(err).NotTo(HaveOccurred(), "Failed to list approval tasks")
 			Expect(tasks).NotTo(BeEmpty(), "No approval tasks found")
-			approvalgate.PerformApprovalTaskActionAsUser("user", "approve", tasks[0].Name, lastNamespace, "")
+			approvalgate.PerformApprovalTaskActionAsUser("user1", "approve", tasks[0].Name, lastNamespace, "")
 		})
 
 		It("waits for PipelineRun to succeed (contains CustomRun)", func() {

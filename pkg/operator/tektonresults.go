@@ -200,7 +200,8 @@ func VerifyResultsRecords(resourceType string) error {
 }
 
 // ConfigureRetentionPolicy configures the retention policy via TektonConfig CR.
-// Uses JSON patch replace to ensure old fields are removed, not merged.
+// It merge-patches to ensure spec.result.options exists, then uses a JSON-patch
+// "add" to set the retention configmap so stale fields are removed, not merged.
 func ConfigureRetentionPolicy(runAt, defaultRetention, maxRetention, policies string) error {
 	// Build the data fields - only include fields with values
 	dataFields := []string{fmt.Sprintf(`"runAt":"%s"`, runAt)}
@@ -222,17 +223,26 @@ func ConfigureRetentionPolicy(runAt, defaultRetention, maxRetention, policies st
 		dataFields = append(dataFields, fmt.Sprintf(`"policies":"%s"`, escapedPolicies))
 	}
 
-	// Use JSON patch "replace" operation to replace the entire data section
-	// This ensures old fields (maxRetention, policies) are removed, not merged
-	patchData := fmt.Sprintf(
-		`[{"op":"replace","path":"/spec/result/options/configMaps/tekton-results-config-results-retention-policy/data","value":{%s}}]`,
-		strings.Join(dataFields, ","),
-	)
-
 	log.Printf("Patching TektonConfig retention policy: runAt=%s, defaultRetention=%s, maxRetention=%s, policies=%v\n",
 		runAt, defaultRetention, maxRetention, policies != "")
 
-	// Patch TektonConfig with JSON patch replace operation
+	// A JSON-patch "add" on /spec/result/options/configMaps requires its parent
+	// (spec.result.options) to already exist, and a "replace" requires the whole
+	// target path to exist; either fails with "the server rejected our request"
+	// on a cluster where options (or configMaps) is absent. First idempotently
+	// ensure spec.result.options exists via a merge patch: merging an empty
+	// object creates the path when missing and leaves any existing members
+	// untouched.
+	cmd.MustSucceed("oc", "patch", "tektonconfig", "config", "--type=merge", "-p", `{"spec":{"result":{"options":{}}}}`)
+
+	// Then use a JSON-patch "add" to set the whole configmap entry. "add" upserts
+	// the member (creates it on a fresh cluster, fully replaces it on subsequent
+	// calls), which guarantees stale fields (maxRetention, policies) are removed
+	// rather than merged.
+	patchData := fmt.Sprintf(
+		`[{"op":"add","path":"/spec/result/options/configMaps","value":{"tekton-results-config-results-retention-policy":{"data":{%s}}}}]`,
+		strings.Join(dataFields, ","),
+	)
 	cmd.MustSucceed("oc", "patch", "tektonconfig", "config", "--type=json", "-p", patchData)
 
 	return nil
