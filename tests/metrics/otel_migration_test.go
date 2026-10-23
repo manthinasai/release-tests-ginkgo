@@ -16,7 +16,7 @@ import (
 
 var oc = occmd.OC{}
 
-var _ = Describe("OpenCensus to OpenTelemetry Migration", Serial, Ordered, Label("metrics", "e2e", "admin"), func() {
+var _ = Describe("OpenCensus to OpenTelemetry Migration: PIPELINES-08", Serial, Ordered, Label("metrics", "e2e", "admin"), func() {
 
 	var ns string
 
@@ -42,7 +42,7 @@ var _ = Describe("OpenCensus to OpenTelemetry Migration", Serial, Ordered, Label
 		lastNamespace = ns
 	})
 
-	Context("Pipeline core metrics are preserved after migration", func() {
+	Context("Pipeline core metrics are preserved after migration: PIPELINES-08-TC01", func() {
 
 		DescribeTable("verifies core metric exists in Prometheus",
 			func(metricName string) {
@@ -65,7 +65,7 @@ var _ = Describe("OpenCensus to OpenTelemetry Migration", Serial, Ordered, Label
 		)
 	})
 
-	Context("Infrastructure metrics are renamed to OTel conventions", func() {
+	Context("Infrastructure metrics are renamed to OTel conventions: PIPELINES-08-TC02", func() {
 
 		DescribeTable("verifies new infrastructure metric name exists",
 			func(metricName string) {
@@ -100,7 +100,7 @@ var _ = Describe("OpenCensus to OpenTelemetry Migration", Serial, Ordered, Label
 		)
 	})
 
-	Context("Removed metrics are absent", func() {
+	Context("Removed metrics are absent: PIPELINES-08-TC03", func() {
 
 		DescribeTable("verifies removed metric is absent",
 			func(metricName string) {
@@ -112,7 +112,7 @@ var _ = Describe("OpenCensus to OpenTelemetry Migration", Serial, Ordered, Label
 		)
 	})
 
-	Context("config-observability ConfigMap uses OTel keys", func() {
+	Context("config-observability ConfigMap uses OTel keys: PIPELINES-08-TC04", func() {
 
 		It("has metrics-protocol key in active config", func() {
 			err := monitoring.VerifyConfigMapKeyExists(sharedClients, config.TargetNamespace, "config-observability", "metrics-protocol")
@@ -125,7 +125,7 @@ var _ = Describe("OpenCensus to OpenTelemetry Migration", Serial, Ordered, Label
 		})
 	})
 
-	Context("Cross-component controllers emit OTel metrics", func() {
+	Context("Cross-component controllers emit OTel metrics: PIPELINES-08-TC05", func() {
 
 		DescribeTable("verifies component scrape target is healthy",
 			func(jobName string) {
@@ -142,13 +142,13 @@ var _ = Describe("OpenCensus to OpenTelemetry Migration", Serial, Ordered, Label
 	})
 })
 
-var _ = Describe("OpenTelemetry Migration - Triggers", Serial, Ordered, Label("metrics", "e2e", "admin"), func() {
+var _ = Describe("OpenTelemetry Migration - Triggers: PIPELINES-08", Serial, Ordered, Label("metrics", "e2e", "admin"), func() {
 
 	BeforeEach(func() {
 		lastNamespace = config.TargetNamespace
 	})
 
-	Context("Triggers controller gauges are preserved after migration", func() {
+	Context("Triggers controller gauges are preserved after migration: PIPELINES-08-TC06", func() {
 
 		DescribeTable("verifies controller gauge exists in Prometheus",
 			func(metricName string) {
@@ -163,7 +163,7 @@ var _ = Describe("OpenTelemetry Migration - Triggers", Serial, Ordered, Label("m
 		)
 	})
 
-	Context("Triggers infrastructure metrics renamed to OTel conventions", func() {
+	Context("Triggers infrastructure metrics renamed to OTel conventions: PIPELINES-08-TC07", func() {
 
 		DescribeTable("verifies new Triggers infra metric exists",
 			func(query string) {

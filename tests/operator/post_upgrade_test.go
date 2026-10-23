@@ -65,8 +65,8 @@ var _ = Describe("Olm Openshift Pipelines operator post upgrade tests: PIPELINES
 			})
 		})
 
-		// PIPELINES-19-TC03
-		Describe("Verify Event listener with TLS after upgrade: PIPELINES-19-TC03", Label("e2e", "sanity", "tls", "triggers"), func() {
+		// PIPELINES-19-TC02
+		Describe("Verify Event listener with TLS after upgrade: PIPELINES-19-TC02", Label("e2e", "sanity", "tls", "triggers"), func() {
 			It("should verify TLS eventlistener still works after upgrade", func() {
 				ns := "releasetest-upgrade-tls"
 				lastNamespace = ns
@@ -82,8 +82,8 @@ var _ = Describe("Olm Openshift Pipelines operator post upgrade tests: PIPELINES
 			})
 		})
 
-		// PIPELINES-19-TC04
-		Describe("Verify secret is linked to SA even after upgrade: PIPELINES-19-TC04", Label("e2e", "sanity", "non-admin", "clustertasks", "git-clone"), func() {
+		// PIPELINES-19-TC03
+		Describe("Verify secret is linked to SA even after upgrade: PIPELINES-19-TC03", Label("e2e", "sanity", "non-admin", "clustertasks", "git-clone"), func() {
 			It("should verify git-clone private pipeline still works after upgrade", func() {
 				ns := "releasetest-upgrade-pipelines"
 				lastNamespace = ns
@@ -97,8 +97,8 @@ var _ = Describe("Olm Openshift Pipelines operator post upgrade tests: PIPELINES
 			})
 		})
 
-		// PIPELINES-19-TC05
-		Describe("Verify S2I golang pipeline after upgrade: PIPELINES-19-TC05", Label("e2e", "non-admin", "clustertasks", "s2i"), func() {
+		// PIPELINES-19-TC04
+		Describe("Verify S2I golang pipeline after upgrade: PIPELINES-19-TC04", Label("e2e", "non-admin", "clustertasks", "s2i"), func() {
 			It("should run s2i golang pipeline for all imagestream tags after upgrade", func() {
 				ns := "releasetest-upgrade-s2i"
 				lastNamespace = ns
@@ -125,8 +125,8 @@ var _ = Describe("Olm Openshift Pipelines operator post upgrade tests: PIPELINES
 			})
 		})
 
-		// PIPELINES-19-TC06
-		Describe("Validate olm skiprange post upgrade: PIPELINES-19-TC06", Label("post-upgrade", "olm"), func() {
+		// PIPELINES-19-TC05
+		Describe("Validate olm skiprange post upgrade: PIPELINES-19-TC05", Label("post-upgrade", "olm"), func() {
 			It("should fetch post-upgrade OLM skipRange and validate diff against pre-upgrade", func() {
 				oc.GetOlmSkipRange("post-upgrade", "post-upgrade-olm-skip-range", "testdata/olm/skiprange.json")
 				oc.ValidateOlmSkipRangeDiff("testdata/olm/skiprange.json", "pre-upgrade-olm-skip-range", "post-upgrade-olm-skip-range")

@@ -79,7 +79,7 @@ const pacExtraServiceMonitor = "pipelines-as-code-monitor"
 // This spec exercises the real operator-managed namespace (config.TargetNamespace) and
 // cluster-scoped resources (TektonConfig, TektonInstallerSets). It intentionally opts out of
 // per-Describe namespace creation via Label("no-auto-namespace").
-var _ = Describe("Prometheus metrics mTLS (enableMetricsMTLS)", Serial, Ordered,
+var _ = Describe("Prometheus metrics mTLS (enableMetricsMTLS): PIPELINES-07", Serial, Ordered,
 	Label("metrics", "e2e", "admin", "no-auto-namespace"), func() {
 
 		var originalMTLSValue *bool
@@ -120,7 +120,7 @@ var _ = Describe("Prometheus metrics mTLS (enableMetricsMTLS)", Serial, Ordered,
 
 		// ── mTLS enabled assertions ─────────────────────────────────────────
 
-		Describe("mTLS enabled", func() {
+		Describe("mTLS enabled: PIPELINES-07-TC01", func() {
 			BeforeAll(func() {
 				Expect(monitoring.SetEnableMetricsMTLS(true)).To(Succeed())
 				err := monitoring.WaitForTektonConfigReady(sharedClients)
@@ -200,7 +200,7 @@ var _ = Describe("Prometheus metrics mTLS (enableMetricsMTLS)", Serial, Ordered,
 
 		// ── mTLS disabled assertions ────────────────────────────────────────
 
-		Describe("mTLS disabled", func() {
+		Describe("mTLS disabled: PIPELINES-07-TC02", func() {
 			BeforeAll(func() {
 				Expect(monitoring.SetEnableMetricsMTLS(false)).To(Succeed())
 				err := monitoring.WaitForTektonConfigReady(sharedClients)
@@ -277,7 +277,7 @@ var _ = Describe("Prometheus metrics mTLS (enableMetricsMTLS)", Serial, Ordered,
 
 		// ── Negative test: tekton-results-api stays plain HTTP always ────────
 
-		Describe("tekton-results-api stays plain HTTP regardless of enableMetricsMTLS", func() {
+		Describe("tekton-results-api stays plain HTTP regardless of enableMetricsMTLS: PIPELINES-07-TC03", func() {
 
 			// tekton-results-api-service uses port name "prometheus" (not the mTLS-managed "http-metrics").
 			// It also carries a pre-existing serving-cert annotation for its main API TLS (unrelated to
@@ -313,7 +313,7 @@ var _ = Describe("Prometheus metrics mTLS (enableMetricsMTLS)", Serial, Ordered,
 
 		// ── Toggle idempotency ──────────────────────────────────────────────
 
-		Describe("toggle idempotency (enable → disable → enable)", func() {
+		Describe("toggle idempotency (enable → disable → enable): PIPELINES-07-TC04", func() {
 
 			It("cycles the flag without stuck InstallerSets and TektonConfig stays Ready", func() {
 				By("Enable mTLS (first time)")

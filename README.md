@@ -224,6 +224,18 @@ LABEL_FILTER='triggers && sanity' ./scripts/run-tests.sh
 | Metrics | `metrics` | `tests/metrics/` |
 | Versions | `versions` | `tests/versions/` |
 | Tekton Kueue | `tekton-kueue`, `install`, `workload`, `admin` | `tests/tektonkueue/` |
+| TLS Scanner | `tls-scan` | `tests/tls/` |
+
+## Test Case ID Mapping
+
+All tests are mapped to PIPELINES test case IDs for Polarion integration. See `tc_spec_map.json` for the complete mapping of all 42 test cases to their corresponding test files.
+
+### Assigning TC IDs to New Tests
+
+When adding new tests:
+1. Add the test file to `tc_spec_map.json` with a new `PIPELINES-XX` ID
+2. Include the TC ID in the main `Describe()` block: `Describe("description: PIPELINES-XX", ...)`
+3. Individual test cases (It blocks) within inner Describe blocks should also include TC IDs (e.g., `Describe("PIPELINES-XX-TC01: should validate X", ...)`) for detailed test tracking
 
 ### Running the Tekton Kueue suite
 

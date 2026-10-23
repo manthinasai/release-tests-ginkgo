@@ -35,7 +35,7 @@ var tlsEnvDeployments = []string{
 	config.ResultsAPIName,           // tekton-results-api
 }
 
-var _ = Describe("SRVKP-11926: Central TLS profile propagation to Pipelines components",
+var _ = Describe("SRVKP-11926: Central TLS profile propagation to Pipelines components: PIPELINES-16",
 	Serial, Ordered, ContinueOnFailure, Label("e2e", "operator", "admin", "tls-profile"), func() {
 
 		var originalProfile string
@@ -64,7 +64,7 @@ var _ = Describe("SRVKP-11926: Central TLS profile propagation to Pipelines comp
 		// "Intermediate" is supported on all OCP versions (4.x+).
 		// It sets TLS_MIN_VERSION=VersionTLS12 on Go-based components.
 
-		It("SRVKP-11926-TC01: Intermediate profile propagates correct TLS env vars to all Go-based deployments",
+		It("SRVKP-11926-TC01: Intermediate profile propagates correct TLS env vars to all Go-based deployments: PIPELINES-16-TC01",
 			Label("tls-profile", "intermediate"), func() {
 
 				operator.PatchClusterTLSProfile(sharedClients, config.TLSProfileIntermediate)
@@ -95,7 +95,7 @@ var _ = Describe("SRVKP-11926: Central TLS profile propagation to Pipelines comp
 				}
 			})
 
-		It("SRVKP-11926-TC02: Intermediate profile propagates TLSv1.2+TLSv1.3 to nginx console plugin ConfigMap",
+		It("SRVKP-11926-TC02: Intermediate profile propagates TLSv1.2+TLSv1.3 to nginx console plugin ConfigMap: PIPELINES-16-TC02",
 			Label("tls-profile", "intermediate", "nginx"), func() {
 
 				// Cluster is already in Intermediate profile from TC01 (Ordered suite).

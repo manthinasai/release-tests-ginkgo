@@ -11,15 +11,14 @@ import (
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/store"
 )
 
-var _ = Describe("Verify Roles for OSP",
+var _ = Describe("Verify Roles for OSP: PIPELINES-34",
 	Label("e2e", "operator", "admin", "sanity", "roles"), func() {
 
 		BeforeEach(func() {
 			operator.ValidateOperatorInstallStatus(sharedClients, store.GetCRNames())
 		})
 
-		// PIPELINES-34-TC01
-		It("Verify Roles in openshift-pipelines ns", func() {
+		It("Verify Roles in openshift-pipelines ns: PIPELINES-34-TC01", func() {
 			expectedRoles := []string{
 				"manual-approval-gate-controller",
 				"manual-approval-gate-info",

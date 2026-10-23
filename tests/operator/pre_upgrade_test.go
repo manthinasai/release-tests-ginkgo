@@ -86,8 +86,8 @@ var _ = Describe("Openshift Pipelines pre upgrade specs: PIPELINES-18", Serial, 
 			})
 		})
 
-		// PIPELINES-18-TC03
-		Describe("Setup Eventlistener with TLS enabled pre upgrade: PIPELINES-18-TC03", Label("e2e", "sanity", "tls", "triggers"), func() {
+		// PIPELINES-18-TC02
+		Describe("Setup Eventlistener with TLS enabled pre upgrade: PIPELINES-18-TC02", Label("e2e", "sanity", "tls", "triggers"), func() {
 			It("should setup eventlistener with TLS and verify pipelinerun pre-upgrade", func() {
 				ns := "releasetest-upgrade-tls"
 				lastNamespace = ns
@@ -112,8 +112,8 @@ var _ = Describe("Openshift Pipelines pre upgrade specs: PIPELINES-18", Serial, 
 			})
 		})
 
-		// PIPELINES-18-TC04
-		Describe("Setup link secret to pipeline SA: PIPELINES-18-TC04", Label("e2e", "sanity", "non-admin", "clustertasks", "git-clone"), func() {
+		// PIPELINES-18-TC03
+		Describe("Setup link secret to pipeline SA: PIPELINES-18-TC03", Label("e2e", "sanity", "non-admin", "clustertasks", "git-clone"), func() {
 			It("should link ssh-key secret to pipeline SA and verify git-clone pipelinerun", func() {
 				ns := "releasetest-upgrade-pipelines"
 				lastNamespace = ns
@@ -133,8 +133,8 @@ var _ = Describe("Openshift Pipelines pre upgrade specs: PIPELINES-18", Serial, 
 			})
 		})
 
-		// PIPELINES-18-TC05
-		Describe("Setup S2I golang pipeline pre upgrade: PIPELINES-18-TC05", Label("e2e", "non-admin", "clustertasks", "s2i"), func() {
+		// PIPELINES-18-TC04
+		Describe("Setup S2I golang pipeline pre upgrade: PIPELINES-18-TC04", Label("e2e", "non-admin", "clustertasks", "s2i"), func() {
 			It("should create S2I golang pipeline and PVC pre-upgrade", func() {
 				ns := "releasetest-upgrade-s2i"
 				lastNamespace = ns
@@ -148,8 +148,8 @@ var _ = Describe("Openshift Pipelines pre upgrade specs: PIPELINES-18", Serial, 
 			})
 		})
 
-		// PIPELINES-18-TC06
-		Describe("Validate olm skiprange pre upgrade: PIPELINES-18-TC06", Label("pre-upgrade", "olm"), func() {
+		// PIPELINES-18-TC05
+		Describe("Validate olm skiprange pre upgrade: PIPELINES-18-TC05", Label("pre-upgrade", "olm"), func() {
 			It("should fetch OLM skipRange and save to file for post-upgrade comparison", func() {
 				oc.GetOlmSkipRange("pre-upgrade", "pre-upgrade-olm-skip-range", "testdata/olm/skiprange.json")
 			})

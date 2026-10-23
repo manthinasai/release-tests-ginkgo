@@ -12,7 +12,7 @@ import (
 
 const multiclusterCustomNP = "multicluster-custom-test"
 
-var _ = Describe("Verify multicluster NetworkPolicy", Serial, Ordered, ContinueOnFailure,
+var _ = Describe("Verify multicluster NetworkPolicy: PIPELINES-39", Serial, Ordered, ContinueOnFailure,
 	Label("operator", "admin", "networkpolicy", "multicluster"), func() {
 		var env *multicluster.Environment
 

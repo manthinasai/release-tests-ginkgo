@@ -8,7 +8,7 @@ import (
 )
 
 // Hub resolvers spec had no Polarion test case ID in the original Gauge spec.
-var _ = Describe("Test hub resolver functionality", Label("e2e", "sanity"), func() {
+var _ = Describe("Test hub resolver functionality: PIPELINES-17", Label("e2e", "sanity"), func() {
 	var ns string
 
 	BeforeEach(func() {
@@ -16,7 +16,7 @@ var _ = Describe("Test hub resolver functionality", Label("e2e", "sanity"), func
 		sharedClients.NewClientSet(ns)
 	})
 
-	It("should resolve tasks from Tekton Hub", func() {
+	It("should resolve tasks from Tekton Hub: PIPELINES-17-TC01", func() {
 		oc.Apply("testdata/resolvers/pipelines/git-cli-hub.yaml", ns)
 		oc.Apply("testdata/pvc/pvc.yaml", ns)
 		oc.Apply("testdata/resolvers/pipelineruns/git-cli-hub.yaml", ns)

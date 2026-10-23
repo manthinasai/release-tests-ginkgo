@@ -156,7 +156,7 @@ func ensureNetworkPolicyEnabled() {
 	operator.EnsureTektonConfigStatusInstalled(sharedClients.TektonConfig(), store.GetCRNames())
 }
 
-var _ = Describe("Verify NetworkPolicy", Serial, Ordered, ContinueOnFailure,
+var _ = Describe("Verify NetworkPolicy: PIPELINES-38", Serial, Ordered, ContinueOnFailure,
 	Label("e2e", "operator", "admin", "networkpolicy"), func() {
 		BeforeEach(func() {
 			lastNamespace = config.TargetNamespace

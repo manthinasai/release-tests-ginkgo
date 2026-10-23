@@ -8,8 +8,7 @@ import (
 	"github.com/openshift-pipelines/release-tests-ginkgo/pkg/store"
 )
 
-// PIPELINES-11
-var _ = Describe("Verify RBAC Resources and CA Bundle Configuration", Serial, Ordered, ContinueOnFailure,
+var _ = Describe("Verify RBAC Resources and CA Bundle Configuration: PIPELINES-11", Serial, Ordered, ContinueOnFailure,
 	Label("e2e", "operator", "admin", "rbac"), func() {
 
 		BeforeAll(func() {
@@ -22,8 +21,7 @@ var _ = Describe("Verify RBAC Resources and CA Bundle Configuration", Serial, Or
 			})
 		})
 
-		// PIPELINES-11-TC01
-		It("Disable RBAC resource creation", Label("sanity", "rbac-disable"), func() {
+		It("Disable RBAC resource creation: PIPELINES-11-TC01", Label("sanity", "rbac-disable"), func() {
 			oc.UpdateTektonConfigParam("createRbacResource", "true")
 			operator.ValidateRBAC(sharedClients, store.GetCRNames())
 
@@ -34,8 +32,7 @@ var _ = Describe("Verify RBAC Resources and CA Bundle Configuration", Serial, Or
 			operator.ValidateRBAC(sharedClients, store.GetCRNames())
 		})
 
-		// PIPELINES-11-TC02
-		It("Independent CA Bundle ConfigMap creation control", Label("sanity", "cabundle-control"), func() {
+		It("Independent CA Bundle ConfigMap creation control: PIPELINES-11-TC02", Label("sanity", "cabundle-control"), func() {
 			oc.UpdateTektonConfigParam("createCABundleConfigMaps", "true")
 			operator.ValidateCABundleConfigMaps(sharedClients, store.GetCRNames())
 
