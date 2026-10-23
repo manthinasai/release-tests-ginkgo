@@ -66,6 +66,27 @@ var _ = SynchronizedBeforeSuite(
 
 var _ = hooks.AutoNamespacePerDescribe(&lastNamespace, func() *clients.Clients { return sharedClients })
 
+// After SRVKP-12172, regular users no longer inherit cluster-wide ApprovalTask access.
+// For approvalgate-users specs, bind user1–user5 to manual-approval-gate-approver in
+// each dynamically created releasetest-* namespace (including retry namespaces).
+var _ = BeforeEach(func() {
+	if !specHasLabel("approvalgate-users") || lastNamespace == "" {
+		return
+	}
+	approvalgate.EnsureApproverRoleBindings(lastNamespace)
+})
+
+func specHasLabel(label string) bool {
+	for _, labels := range CurrentSpecReport().ContainerHierarchyLabels {
+		for _, l := range labels {
+			if l == label {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 var _ = AfterSuite(func() {
 	hooks.CleanupNamespaces()
 	approvalgate.CleanupUserKubeconfigs()

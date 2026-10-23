@@ -245,6 +245,34 @@ func MAGGroupName(namespace, alias string) string {
 	return fmt.Sprintf("mag-%s-%s", namespace, safeAlias)
 }
 
+// magApproverUsers are the HTPasswd test users used by approvalgate-users scenarios.
+// After SRVKP-12172, system:authenticated no longer inherits cluster-wide ApprovalTask
+// access, so these users need an explicit namespace RoleBinding to the MAG approver ClusterRole.
+var magApproverUsers = []string{"user1", "user2", "user3", "user4", "user5"}
+
+const magApproverClusterRole = "manual-approval-gate-approver"
+
+// EnsureApproverRoleBindings grants user1–user5 namespace-scoped access to ApprovalTasks
+// by binding each user to ClusterRole manual-approval-gate-approver. Idempotent.
+func EnsureApproverRoleBindings(namespace string) {
+	Expect(namespace).NotTo(BeEmpty(), "namespace must not be empty for MAG approver RoleBindings")
+
+	for _, user := range magApproverUsers {
+		bindingName := fmt.Sprintf("mag-approver-%s", user)
+		res := cmd.Run("oc", "create", "rolebinding", bindingName,
+			"--clusterrole="+magApproverClusterRole,
+			"--user="+user,
+			"-n", namespace)
+		if res.ExitCode == 0 {
+			log.Printf("Created RoleBinding %s for %s in %s", bindingName, user, namespace)
+			continue
+		}
+		stderr := strings.ToLower(res.Stderr())
+		Expect(strings.Contains(stderr, "already exists") || strings.Contains(stderr, "alreadyexists")).To(
+			BeTrue(), "failed to create RoleBinding %s in %s: %s", bindingName, namespace, res.Stderr())
+	}
+}
+
 // EnsureGroupMembers ensures the named OpenShift Group exists with exactly the provided members.
 func EnsureGroupMembers(group string, users []string) {
 	Expect(group).NotTo(BeEmpty(), "group name must not be empty")
