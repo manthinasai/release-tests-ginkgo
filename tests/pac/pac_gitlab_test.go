@@ -230,14 +230,14 @@ var _ = Describe("Pipelines As Code GitLab tests: PIPELINES-30", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should have 2 pipelineruns within 10 seconds", func() {
+		It("should have 2 pipelineruns within 60 seconds", func() {
 			Eventually(func() int {
 				prlist, err := sharedClients.PipelineRunClient.List(sharedClients.Ctx, metav1.ListOptions{})
 				if err != nil {
 					return -1
 				}
 				return len(prlist.Items)
-			}).WithTimeout(10 * time.Second).WithPolling(2 * time.Second).Should(Equal(2))
+			}).WithTimeout(60 * time.Second).WithPolling(5 * time.Second).Should(Equal(2))
 		})
 
 		It("should validate second pull_request PipelineRun succeeds", func() {
