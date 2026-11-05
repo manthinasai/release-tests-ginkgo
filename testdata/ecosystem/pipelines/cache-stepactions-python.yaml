@@ -6,10 +6,10 @@ metadata:
 spec:
   params:
     - name: repo_url
-      default: https://github.com/openshift-pipelines/release-tests.git
+      default: https://github.com/openshift-pipelines/release-tests-ginkgo.git
     - name: revision
       type: string
-      default: master
+      default: main
     - name: registry
       type: string
       default: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/python-cache
@@ -84,7 +84,7 @@ spec:
           - name: CACHE_PATH
             value: $(workspaces.source.path)/cache/lib
           - name: WORKING_DIR
-            value: $(workspaces.source.path)
+            value: $(workspaces.source.path)/repo
       - name: check-fetch-result
         image: $(params.image):$(params.version)
         results:
@@ -140,7 +140,7 @@ spec:
           - name: CACHE_PATH
             value: $(workspaces.source.path)/cache/lib
           - name: WORKING_DIR
-            value: $(workspaces.source.path)
+            value: $(workspaces.source.path)/repo
           - name: FORCE_CACHE_UPLOAD
             value: $(params.force-cache-upload)
           - name: FETCHED
