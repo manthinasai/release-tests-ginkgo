@@ -171,7 +171,7 @@ var _ = Describe("Test the functionality of cache-upload stepaction: PIPELINES-2
 		oc.Create("testdata/ecosystem/pipelines/cache-stepactions-python.yaml", ns)
 		oc.Create("testdata/pvc/pvc.yaml", ns)
 
-		params := map[string]string{"revision": "release-v1.17"}
+		params := map[string]string{"revision": "release-v1.24"}
 		workspaces := map[string]string{"name=source": "claimName=shared-pvc"}
 
 		// First run — should upload cache
@@ -200,8 +200,8 @@ var _ = Describe("Validate cache uploads with change in revision: PIPELINES-29-T
 
 		workspaces := map[string]string{"name=source": "claimName=shared-pvc"}
 
-		// First run with revision release-v1.17
-		params1 := map[string]string{"revision": "release-v1.17"}
+		// First run with revision release-v1.24
+		params1 := map[string]string{"revision": "release-v1.24"}
 		prName1 := opc.StartPipeline("caches-python-pipeline", params1, workspaces, ns, "--use-param-defaults")
 		pipelines.ValidatePipelineRun(sharedClients, prName1, "successful", ns)
 		logs1 := cmd.MustSucceed("oc", "logs", "-l",

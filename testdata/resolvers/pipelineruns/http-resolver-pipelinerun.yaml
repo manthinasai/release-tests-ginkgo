@@ -7,4 +7,4 @@ spec:
     resolver: http
     params:
     - name: url
-      value: "https://raw.githubusercontent.com/openshift-pipelines/release-tests/refs/heads/master/testdata/resolvers/pipelines/http-resolver-pipeline.yaml"
+      value: "https://raw.githubusercontent.com/openshift-pipelines/release-tests-ginkgo/refs/heads/main/testdata/resolvers/pipelines/http-resolver-pipeline.yaml"

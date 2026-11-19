@@ -9,8 +9,8 @@ spec:
     - name: name
       value: git-resolver-pipeline
     - name: url
-      value: https://github.com/openshift-pipelines/release-tests
+      value: https://github.com/openshift-pipelines/release-tests-ginkgo
     - name: revision
-      value: master
+      value: main
     - name: pathInRepo
       value: testdata/resolvers/pipelines/git-resolver-pipeline.yaml

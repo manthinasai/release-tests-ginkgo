@@ -24,9 +24,9 @@ spec:
       workspace: source
     params:
     - name: URL
-      value: https://github.com/openshift-pipelines/release-tests
+      value: https://github.com/openshift-pipelines/release-tests-ginkgo
     - name: REVISION
-      value: master
+      value: main
     - name: SUBDIRECTORY
       value: s2i-python-$(params.VERSION)
     - name: DELETE_EXISTING

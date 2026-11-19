@@ -11,8 +11,8 @@ spec:
         - name: name
           value: git-resolver-task
         - name: url
-          value: https://github.com/openshift-pipelines/release-tests
+          value: https://github.com/openshift-pipelines/release-tests-ginkgo
         - name: revision
-          value: master
+          value: main
         - name: pathInRepo
           value: testdata/resolvers/tasks/git-resolver-task.yaml

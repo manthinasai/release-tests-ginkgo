@@ -7,7 +7,7 @@ spec:
   - name: mode
     default: download
   - name: url
-    default: https://github.com/openshift-pipelines/release-tests/pull/400
+    default: https://github.com/openshift-pipelines/release-tests-ginkgo/pull/99
   - name: provider
     default: github
   - name: secret-key-ref

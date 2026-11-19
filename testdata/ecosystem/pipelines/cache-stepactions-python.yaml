@@ -15,7 +15,7 @@ spec:
       default: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/python-cache
     - name: cachePatterns
       type: array
-      default: ["**requirment.txt"]
+      default: ["**requirements.txt"]
     - name: image
       type: string
       default: image-registry.openshift-image-registry.svc:5000/openshift/python
@@ -115,7 +115,7 @@ spec:
         script: |
           set -x
           source $(workspaces.source.path)/cache/bin/activate
-          pip install -r testdata/s2i_python/requirment.txt 
+          pip install -r testdata/s2i_python/requirements.txt 
           echo "Cache size is $(du -sh $(workspaces.source.path)/cache)"  
     runAfter:
     - cache-fetch
