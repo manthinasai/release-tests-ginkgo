@@ -17,11 +17,14 @@ import (
 // FetchOlmSkipRange fetches OLM skipRange data from the openshift-pipelines-operator-rh
 // package manifest, returning a map of channel name → skipRange string.
 func FetchOlmSkipRange() (map[string]string, error) {
-	operatorEnv := os.Getenv("OPERATOR_ENVIRONMENT")
 	catalogSource := os.Getenv("CATALOG_SOURCE")
+	operatorEnv := os.Getenv("OPERATOR_ENVIRONMENT")
 	var catalog string
 
+	// Priority: CATALOG_SOURCE > OPERATOR_ENVIRONMENT > default
 	switch {
+	case catalogSource != "":
+		catalog = catalogSource
 	case operatorEnv != "":
 		switch operatorEnv {
 		case "pre-stage", "stage":
@@ -31,8 +34,6 @@ func FetchOlmSkipRange() (map[string]string, error) {
 		default:
 			catalog = "redhat-operators"
 		}
-	case catalogSource != "":
-		catalog = catalogSource
 	default:
 		catalog = "redhat-operators"
 	}
